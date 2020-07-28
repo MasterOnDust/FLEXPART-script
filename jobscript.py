@@ -1,7 +1,7 @@
 from params import sites
 import argparse as ap
 import os
-from simulation import *
+from flexpart_setup import *
 import pandas as pd
 import shutil
 import sys
@@ -52,7 +52,7 @@ def write_release_file(sites, specNum, folderName):
             RELEASES.LAT2 = site.lat
             RELEASES.comment = '\"' + site.comment + rel_comment + '\"'
             write_single_release(r)
-
+            RELEASES.comment = rel_comment
         r.writelines('/')
 
 def write_single_release(outfile):
@@ -65,20 +65,19 @@ def write_single_release(outfile):
 
 
 
-
 def submit_job(dateI, folderName):
 #   Should make jobfile configurable from simulation.py
     str_date = dateI.strftime("%Y%m%d-%H")
     job_file = folderName + '/submit_' + dateI.strftime("%Y%m%d_%H") + '.sh'
+    settings = JOBSCRIPT.job_params
     with open(job_file, 'w') as fh:
         fh.writelines("#!/bin/bash\n")
-        fh.writelines("#SBATCH --account=nn2806k\n")
+        for option, setting in settings.items():
+            fh.writelines("#SBATCH --{}={}\n".format(option,setting))
         fh.writelines("#SBATCH --job-name=FLEXPART_{}\n".format(str_date))
-        fh.writelines("#SBATCH --time=1:00:00\n")
-        fh.writelines("#SBATCH --ntasks=1\n")
-        fh.writelines("#SBATCH --mem-per-cpu=6G\n")
-       # fh.writelines("#SBATCH --error=.out_{}.err\n".format(folderName))
-       # fh.writelines("#SBATCH --output=.out_{}.out\n".format(folderName))
+        fh.writelines("#SBATCH --error={}/out_{}.err\n".format(folderName,str_date))
+        fh.writelines("#SBATCH --output={}/out_{}.out\n".format(folderName,str_date))
+        fh.writelines("#SBATCH --mail-type=FAIL\n")
         fh.writelines('set -o errexit\n')
         fh.writelines('set -o nounset\n')
         fh.writelines('module --quiet purge\n')
@@ -88,6 +87,8 @@ def submit_job(dateI, folderName):
         fh.writelines('export PATH=/cluster/projects/nn2806k/flexpart/flexpart/src:$PATH\n')
         fh.writelines('cd {}\n'.format(folderName))
         fh.writelines("time FLEXPART\n")
+
+        fh.writelines('echo \"{} ,       COMPLETED \" >> {}/COMPLETED_RUNS'.format(folderName,abs_path))
         fh.writelines('exit 0' )
     os.system("sbatch %s" %job_file)
 
@@ -115,6 +116,8 @@ def tracing_the_winds_sites():
     return site_dict
 
 def setup_flexpart(site_list):
+    with open(abs_path + "/COMPLETED_RUNS", "w") as cr:
+        cr.writelines("Path,            STATUS \n")
     s = pd.to_datetime(start_date+' '+start_time)
     e = pd.to_datetime(end_date+' '+end_time)
     date_range = pd.date_range(start=s,
@@ -144,7 +147,7 @@ def setup_flexpart(site_list):
             submit_job(date, folderName)
             break
         else:
-            continue
+            submit_job(date,folderName)
 
 
 

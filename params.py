@@ -23,23 +23,40 @@ class Species_Params:
         'POHNCONST':  '2.0' }
         for k, o in kwargs.items():
             self.sp[k] = o
-    
-    
+
+
     @property
     def species_Params(self):
         return self.sp
-            
-            
+
+class Job_params:
+  def __init__(self, **kwargs):
+      self.jb = {'account': 'nn2806k',
+               'time': '1:00:00',
+               'ntasks':'1',
+               'mem-per-cpu':'6G',
+               'mail-user':'ovewh@student.geo.uio.no'}
+      for k, o in kwargs.items():
+          if k == 'mem_per_cpu':
+              self.jb['mem-per-cpu'] = o
+          else:
+              self.jb[k] = o
+  @property
+  def job_params(self):
+      return self.jb
+
+
+
 class Outgrid:
     def __init__(self,**kwargs):
-        self.og ={ 
+        self.og ={
              'OUTLON0' :'60.00000'    ,
              'OUTLAT0' :'30.00000'    ,
              'NUMXGRID' :    '680',
              'NUMYGRID' :'320',
              'DXOUT' : '0.1000000'    ,
              'DYOUT' :  '0.1000000'    ,
-             'OUTHEIGHTS':'100.0000    ,   500.0000    ,   1000.000    ,   5000.000'    
+             'OUTHEIGHTS':'100.0000    ,   500.0000    ,   1000.000    ,   5000.000'
         }
         for k, o in kwargs.items():
             self.og[k] = o
@@ -49,7 +66,7 @@ class Outgrid:
 
 class Releases:
     def __init__(self, **kwargs):
-        self.r = {'PARTS':'50000', 
+        self.r = {'PARTS':'50000',
                   'Z1':'100',
                   'Z2': '100',
                   'ZKIND': '1',
@@ -82,7 +99,7 @@ class Releases:
     @ITIME2.setter
     def ITIME2(self, btime):
         self.r['ITIME2'] = btime
-    
+
     @property
     def LON1(self):
         return self.r['LON1']
@@ -92,38 +109,39 @@ class Releases:
     @property
     def LAT1(self):
         return self.r['LAT1']
-    
+
     @LAT1.setter
     def LAT1(self, lat):
         self.r['LAT1'] = lat
-        
+
     @property
     def LON2(self):
         return self.r['LON2']
-    
+
     @LON2.setter
     def LON2(self, lon):
         self.r['LON2'] = lon
-    
+
     @property
     def LAT2(self):
         return self.r['LAT2']
-    
+
     @LAT2.setter
     def LAT2(self, lat):
         self.r['LAT2'] = lat
-    
+
     @property
     def comment(self):
         return self.r['COMMENT']
+
     @comment.setter
     def comment(self, comment):
         self.r['COMMENT'] = comment
     @property
     def release(self):
         return self.r
-        
-    
+
+
 class Command:
     def __init__(self, **kwargs):
         self.c = {
@@ -157,7 +175,7 @@ class Command:
              'CBLFLAG':        '0',
              'OHFIELDS_PATH':          '../../flexin/',
         }
-        
+
         for k, o in kwargs.items():
             self.c[k] = o
     @property
@@ -169,49 +187,49 @@ class Command:
     @IBDATE.setter
     def IBDATE(self, bdate):
         self.c['IBDATE'] = bdate
-    
+
     @property
     def IEDATE(self, edate):
         return self.c['IEDATE']
     @IEDATE.setter
     def IEDATE(self, edate):
         self.c['IEDATE'] = edate
-     
-    
+
+
     @property
     def IETIME(self):
         return self.c['IETIME']
     @IETIME.setter
     def IETIME(self, etime):
         self.c['IETIME'] = etime
-        
-        
+
+
     @property
     def IBTIME(self):
         return self.c['IBTIME']
     @IBTIME.setter
     def IBTIME(self, btime):
         self.c['IBTIME'] = btime
-        
-    
+
+
 class sites:
     def __init__(self, lon, lat, comment):
         self.lon = lon
         self.lat = lat
         self.comment = comment
-    
-    
+
+
     @property
     def LON(self):
         return self.lon
-    
+
     @property
     def LAT(self):
         return self.lat
-    
+
     @property
     def COMMENT(self):
         return self.comment
-    
-    
-    
+
+
+
