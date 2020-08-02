@@ -1,13 +1,13 @@
 from params import sites
 import argparse as ap
 import os
-from flexpart_setup import *
 import pandas as pd
 import shutil
 import sys
+import importlib.util
 
 def write_species(folderName):
-    settings = SPEC.species_Params
+    settings = sim.SPEC.species_Params
     with open(folderName +'/options/SPECIES/SPECIES_001', 'w') as sp:
         sp.writelines('&SPECIES_PARAMS\n')
         for option, setting in settings.items():
@@ -15,7 +15,7 @@ def write_species(folderName):
         sp.writelines('/')
 
 def write_command(folderName):
-    settings =  COMMAND.command
+    settings =  sim.COMMAND.command
     with open(folderName + '/options/COMMAND', 'w') as c:
         c.writelines('&COMMAND\n')
         for option, setting in settings.items():
@@ -24,7 +24,7 @@ def write_command(folderName):
         c.writelines('/')
 
 def write_outgrid(folderName):
-    settings = OUTGRID.outgrid
+    settings = sim.OUTGRID.outgrid
     with open(folderName + '/options/OUTGRID', 'w') as o:
         o.writelines('&OUTGRID\n')
         for option, setting in settings.items():
@@ -46,18 +46,18 @@ def write_release_file(sites, specNum, folderName):
         r.writelines('NSPEC = {},\n'.format(nspec))
         r.writelines('SPECNUM_REL = {}*{},\n'.format(nspec, specNum))
         for site in sites:
-            RELEASES.LON1 = site.lon
-            RELEASES.LON2 = site.lon
-            RELEASES.LAT1 = site.lat
-            RELEASES.LAT2 = site.lat
-            RELEASES.comment = '\"' + site.comment + rel_comment + '\"'
+            sim.RELEASES.LON1 = site.lon
+            sim.RELEASES.LON2 = site.lon
+            sim.RELEASES.LAT1 = site.lat
+            sim.RELEASES.LAT2 = site.lat
+            sim.RELEASES.comment = '\"' + site.comment + rel_comment + '\"'
             write_single_release(r)
-            RELEASES.comment = rel_comment
+            sim.RELEASES.comment = rel_comment
         r.writelines('/')
 
 def write_single_release(outfile):
     outfile.writelines('/\n')
-    settings = RELEASES.release
+    settings = sim.RELEASES.release
 
     outfile.writelines('&RELEASE\n')
     for option, setting in settings.items():
@@ -69,7 +69,7 @@ def submit_job(dateI, folderName):
 #   Should make jobfile configurable from simulation.py
     str_date = dateI.strftime("%Y%m%d-%H")
     job_file = folderName + '/submit_' + dateI.strftime("%Y%m%d_%H") + '.sh'
-    settings = JOBSCRIPT.job_params
+    settings = sim.JOBSCRIPT.job_params
     with open(job_file, 'w') as fh:
         fh.writelines("#!/bin/bash\n")
         for option, setting in settings.items():
@@ -88,17 +88,17 @@ def submit_job(dateI, folderName):
         fh.writelines('cd {}\n'.format(folderName))
         fh.writelines("time FLEXPART\n")
 
-        fh.writelines('echo \"{} ,       COMPLETED \" >> {}/COMPLETED_RUNS'.format(folderName,abs_path))
+        fh.writelines('echo \"{} ,       COMPLETED \" >> {}/COMPLETED_RUNS'.format(folderName,sim.abs_path))
         fh.writelines('exit 0' )
     os.system("sbatch %s" %job_file)
 
 def makefolderStruct(dateI):
-    folderName = abs_path + '/' + dateI.strftime("%Y%m%d_%H")
+    folderName = sim.abs_path + '/' + dateI.strftime("%Y%m%d_%H")
     os.mkdir(folderName)
     os.mkdir(folderName + '/options')
     os.mkdir(folderName + '/output')
     os.mkdir(folderName +'/options/SPECIES')
-    for filename in os.listdir(flexpart_input_path):
+    for filename in os.listdir(sim.flexpart_input_path):
         shutil.copy(flexpart_input_path + '/' + filename, folderName + '/options/')
 
     write_pathnames(folderName)
@@ -116,26 +116,26 @@ def tracing_the_winds_sites():
     return site_dict
 
 def setup_flexpart(site_list):
-    with open(abs_path + "/COMPLETED_RUNS", "w") as cr:
+    with open(sim.abs_path + "/COMPLETED_RUNS", "w") as cr:
         cr.writelines("Path,            STATUS \n")
-    s = pd.to_datetime(start_date+' '+start_time)
-    e = pd.to_datetime(end_date+' '+end_time)
+    s = pd.to_datetime(sim.start_date+' '+sim.start_time)
+    e = pd.to_datetime(sim.end_date+' '+sim.end_time)
     date_range = pd.date_range(start=s,
-                           end=e, freq=time_step)
-    sim_lenght = pd.to_timedelta(lenght_of_simulation)
-    release_duration = pd.to_timedelta(release_intervall)
+                           end=e, freq=sim.time_step)
+    sim_lenght = pd.to_timedelta(sim.lenght_of_simulation)
+    release_duration = pd.to_timedelta(sim.release_intervall)
 
     for date in date_range:
 
-        COMMAND.IBDATE = (date+sim_lenght).strftime('%Y%m%d')
-        COMMAND.IBTIME = (date+sim_lenght).strftime('%H%M%S')
-        COMMAND.IEDATE = date.strftime('%Y%m%d')
-        COMMAND.IETIME = date.strftime('%H%M%S')
+        sim.COMMAND.IBDATE = (date+sim_lenght).strftime('%Y%m%d')
+        sim.COMMAND.IBTIME = (date+sim_lenght).strftime('%H%M%S')
+        sim.COMMAND.IEDATE = date.strftime('%Y%m%d')
+        sim.COMMAND.IETIME = date.strftime('%H%M%S')
 
-        RELEASES.IDATE1 = (date+release_duration).strftime('%Y%m%d')
-        RELEASES.ITIME1 = (date+release_duration).strftime('%H%M%S')
-        RELEASES.IDATE2 = date.strftime('%Y%m%d')
-        RELEASES.ITIME2 = date.strftime('%H%M%S')
+        sim.RELEASES.IDATE1 = (date+release_duration).strftime('%Y%m%d')
+        sim.RELEASES.ITIME1 = (date+release_duration).strftime('%H%M%S')
+        sim.RELEASES.IDATE2 = date.strftime('%Y%m%d')
+        sim.RELEASES.ITIME2 = date.strftime('%H%M%S')
         folderName = makefolderStruct(date)
         write_command(folderName)
         write_outgrid(folderName)
@@ -153,31 +153,48 @@ def setup_flexpart(site_list):
 
 def createParentDir():
     try:
-        os.mkdir(abs_path)
+        os.mkdir(sim.abs_path)
     except FileExistsError:
         askConfirmation = input("""This folder already exists,
         do you want to delete it? (y/n)""")
         if askConfirmation.strip() == 'y':
-            shutil.rmtree(abs_path)
-            os.mkdir(abs_path)
+            shutil.rmtree(sim.abs_path)
+            os.mkdir(sim.abs_path)
         else:
             sys.exit()
-    os.chdir(abs_path)
+    os.chdir(sim.abs_path)
 
 
 if __name__=="__main__":
+    
     parser = ap.ArgumentParser()
     parser.add_argument('--test', help="Setup one simulation, for check if setting is correct without submiting", action="store_true")
     parser.add_argument('--testAndSubmit', '--ts', help ="Setup one simulation and submit job", action="store_true")
+    parser.add_argument('--path', '--p', help='Path to file containting simulation settings', default='flexpart_setup.py')
+    parser.add_argument('--absPath', '--ap', help='Absolute path to topdirectory where flexpart simulation will be created', default=None)
     args = parser.parse_args()
+    
     test = False
     test_and_submit = False
+    
     if args.test:
         test = True
     elif args.testAndSubmit:
         test_and_submit = True
+    path = args.path
+    arg_path = args.absPath
+
+    spec = importlib.util.spec_from_file_location('*', path)
+    sim = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(sim)
+
+    if arg_path:
+        sim.abs_path = arg_path
+
+    sim.abs_path = os.path.abspath(sim.abs_path)
+
     site_dict = tracing_the_winds_sites()
-    site_list = [site_dict[loc] for loc in locations]
+    site_list = [site_dict[loc] for loc in sim.locations]
     createParentDir()
     setup_flexpart(site_list)
 
