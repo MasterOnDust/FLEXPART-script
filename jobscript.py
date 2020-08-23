@@ -35,12 +35,12 @@ def write_pathnames(folderName):
         pn.writelines('./options/\n')
         pn.writelines('./output/\n')
         pn.writelines('/\n')
-        pn.writelines(path_to_forcing + '\n')
+        pn.writelines(sim.path_to_forcing + '\n')
         pn.writelines('============================================')
 
 def write_release_file(sites, specNum, folderName):
     nspec = len(sites)
-    rel_comment = RELEASES.comment
+    rel_comment = sim.RELEASES.comment
     with open(folderName+'/options/RELEASES', 'w') as r:
         r.writelines('&RELEASES_CTRL\n')
         r.writelines('NSPEC = {},\n'.format(nspec))
@@ -84,11 +84,11 @@ def submit_job(dateI, folderName):
 
         fh.writelines('module load ecCodes/2.9.2-intel-2018b\n')
         fh.writelines('module load netCDF-Fortran/4.4.4-intel-2018b\n')
-        fh.writelines('export PATH=/cluster/projects/nn2806k/flexpart/flexpart/src:$PATH\n')
+        fh.writelines('export PATH={}:$PATH\n'.format(sim.flexpart_src))
         fh.writelines('cd {}\n'.format(folderName))
         fh.writelines("time FLEXPART\n")
 
-        fh.writelines('echo \"{} ,       COMPLETED \" >> {}/COMPLETED_RUNS'.format(folderName,sim.abs_path))
+        fh.writelines('echo \"{} ,       COMPLETED \" >> {}/COMPLETED_RUNS \n'.format(folderName,sim.abs_path))
         fh.writelines('exit 0' )
     os.system("sbatch %s" %job_file)
 
@@ -99,7 +99,7 @@ def makefolderStruct(dateI):
     os.mkdir(folderName + '/output')
     os.mkdir(folderName +'/options/SPECIES')
     for filename in os.listdir(sim.flexpart_input_path):
-        shutil.copy(flexpart_input_path + '/' + filename, folderName + '/options/')
+        shutil.copy(sim.flexpart_input_path + '/' + filename, folderName + '/options/')
 
     write_pathnames(folderName)
 
@@ -166,17 +166,17 @@ def createParentDir():
 
 
 if __name__=="__main__":
-    
+
     parser = ap.ArgumentParser()
     parser.add_argument('--test', help="Setup one simulation, for check if setting is correct without submiting", action="store_true")
     parser.add_argument('--testAndSubmit', '--ts', help ="Setup one simulation and submit job", action="store_true")
     parser.add_argument('--path', '--p', help='Path to file containting simulation settings', default='flexpart_setup.py')
     parser.add_argument('--absPath', '--ap', help='Absolute path to topdirectory where flexpart simulation will be created', default=None)
     args = parser.parse_args()
-    
+
     test = False
     test_and_submit = False
-    
+
     if args.test:
         test = True
     elif args.testAndSubmit:
