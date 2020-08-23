@@ -10,6 +10,8 @@ import shutil
 
 import argparse as ap
 
+from dask.distributed import Client
+
 def not_usefull(ds):
     essentials = ['RELCOM','RELLNG1','RELLNG2','RELLAT1','RELLAT2','RELZZ1','RELZZ2',
                 'RELKINDZ','RELSTART','RELEND','RELPART','RELXMASS','LAGE','ORO', 'spec001_mr']
@@ -76,7 +78,7 @@ def avg_emission_senstivity(path, ncfiles, pointspec ,date_slice=None, data_var=
         field.units = 's'
         field_name = 'Unknown'
 
-    outFileName = path + '/' + '_'.join(relcom) +'_avg_{}_{}_{}'.format(f_name,e_time, s_time) + '.nc'
+    outFileName = path + '/' + '_'.join(relcom) +'_avg_{}_{}_{}'.format(f_name,s_time, e_time) + '.nc'
     try:
         ncfile = Dataset(outFileName, 'w', format="NETCDF4")
     except PermissionError:
@@ -144,6 +146,7 @@ if __name__ == "__main__":
     parser.add_argument("--locations", "--locs",default=defaultLocations, help=helpLocation, nargs='+')
     parser.add_argument('--etime', '--et', help='end of averaging window', default= None)
     parser.add_argument('--stime','--st', help = 'start of averaging window', default=None)
+    parser.add_argument('--use_client', '--uc', help = 'create dask client', action='store_true')
 
     args = parser.parse_args()
     path = args.flexpart_topdir
@@ -152,9 +155,11 @@ if __name__ == "__main__":
     zlib = args.zlib
     e_time = args.etime
     s_time = args.stime
+    create_client = args.use_client
     ncfiles = glob.glob(path + '/**/grid*.nc', recursive=True)
     ncfiles.sort()
     
+
     d = xr.open_dataset(ncfiles[0])
     relCOMS = d.RELCOM
     ind_receptor = d.ind_receptor
@@ -164,6 +169,9 @@ if __name__ == "__main__":
         e_time = pd.to_datetime(ncfiles[-1][-17:-3]).strftime('%Y-%m-%d')
     if s_time == None:
         s_time = pd.to_datetime(ncfiles[0][-17:-3]).strftime('%Y-%m-%d')
+
+    if create_client==True:
+        client = Client()
 
     date_slice = slice(s_time, e_time)
     if ind_receptor == 1:
