@@ -5,6 +5,10 @@ import xarray as xr
 
 import pandas as pd
 from functools import partial
+import os
+import shutil
+
+import argparse as ap
 
 def not_usefull(ds):
     essentials = ['RELCOM','RELLNG1','RELLNG2','RELLAT1','RELLAT2','RELZZ1','RELZZ2',
@@ -23,7 +27,7 @@ def pre_sum(ds, pointspec):
 
 
 
-def sum_emissions(path, ncfiles, pointspec ,date_slice=None, data_var='spec001_mr',**kwargs):
+def avg_emission_senstivity(path, ncfiles, pointspec ,date_slice=None, data_var='spec001_mr',**kwargs):
     pre = partial(pre_sum,pointspec=pointspec)
 
 
@@ -43,8 +47,7 @@ def sum_emissions(path, ncfiles, pointspec ,date_slice=None, data_var='spec001_m
                             combine='nested', concat_dim='time', parallel=True)
 
 
-    
-    outFileName = path + '/' + 'avg_gridtime_{}_{}'.format(e_time, s_time) + '.nc'
+
     d0 = xr.open_dataset(ncfiles[0], decode_times=False)
     d0 = d0.sel(pointspec=pointspec, numpoint=pointspec, numspec=pointspec)
     lats = d0.latitude.values
@@ -55,7 +58,7 @@ def sum_emissions(path, ncfiles, pointspec ,date_slice=None, data_var='spec001_m
     relcom = str(d0.RELCOM.values)[2:].strip()[:-1].split()
     d0.close()
     ind_receptor = d0.ind_receptor
-    
+
     if ind_receptor == 1:
         f_name = 'Conc_emsens'
         field_unit = 's'
@@ -73,6 +76,7 @@ def sum_emissions(path, ncfiles, pointspec ,date_slice=None, data_var='spec001_m
         field.units = 's'
         field_name = 'Unknown'
 
+    outFileName = path + '/' + '_'.join(relcom) +'_avg_{}_{}_{}'.format(f_name,e_time, s_time) + '.nc'
     try:
         ncfile = Dataset(outFileName, 'w', format="NETCDF4")
     except PermissionError:
@@ -110,7 +114,6 @@ def sum_emissions(path, ncfiles, pointspec ,date_slice=None, data_var='spec001_m
     lon[:] = lons
     lat[:] = lats
 
-    print(d0.RELLAT1.values)
 
     rellat[:] = d0.RELLAT1.values
     rellon[:] = d0.RELLNG1.values
@@ -128,6 +131,65 @@ def sum_emissions(path, ncfiles, pointspec ,date_slice=None, data_var='spec001_m
 
 if __name__ == "__main__":
     import glob
-    ncfiles = glob.glob('../FLEXPART_output/dry_dep/**/grid*.nc', recursive=True)
+    defaultLocations = 'ALL'
+    helpLocation = "Name or integer correspoding to location defined in FLEXPART RELEASE file"
+    helpZlib = "Whether to use zlib compression"
+    
+    parser = ap.ArgumentParser(description='''Averages emission sensitivities 
+    from FLEXPART netCDF files''')
+
+    parser.add_argument('--out_path', '--op', default='.', help='Path to where averaged output will be stored')
+    parser.add_argument('flexpart_topdir', help='top directory containing the FLEXPART out')
+    parser.add_argument("--zlib", "--zl", help=helpZlib, action='store_true')
+    parser.add_argument("--locations", "--locs",default=defaultLocations, help=helpLocation, nargs='+')
+    parser.add_argument('--etime', '--et', help='end of averaging window', default= None)
+    parser.add_argument('--stime','--st', help = 'start of averaging window', default=None)
+
+    args = parser.parse_args()
+    path = args.flexpart_topdir
+    locations = args.locations
+    outpath = args.out_path
+    zlib = args.zlib
+    e_time = args.etime
+    s_time = args.stime
+    ncfiles = glob.glob(path + '/**/grid*.nc', recursive=True)
     ncfiles.sort()
-    sum_emissions('../',ncfiles,0)
+    
+    d = xr.open_dataset(ncfiles[0])
+    relCOMS = d.RELCOM
+    ind_receptor = d.ind_receptor
+    d.close()
+
+    if e_time == None:
+        e_time = pd.to_datetime(ncfiles[-1][-17:-3]).strftime('%Y-%m-%d')
+    if s_time == None:
+        s_time = pd.to_datetime(ncfiles[0][-17:-3]).strftime('%Y-%m-%d')
+
+    date_slice = slice(s_time, e_time)
+    if ind_receptor == 1:
+        f_name = 'Conc'
+    elif ind_receptor == 3:
+        f_name = 'WetDep'
+    elif ind_receptor ==4:
+        f_name = 'DryDep'
+    else:
+        f_name = 'Unknown'
+
+    dir_p = outpath+'/'+f_name + '_mean_{}_{}'.format(s_time, e_time)
+    try:
+        os.mkdir(dir_p)
+    except FileExistsError:
+ 
+        shutil.rmtree(dir_p)
+        os.mkdir(dir_p)
+
+    for i , com in enumerate(relCOMS):
+        loc = str(com.values)[2:].strip().split()
+        if locations == 'ALL':
+            avg_emission_senstivity(dir_p,ncfiles, i, date_slice=date_slice, zlib=zlib)
+        else:
+            for receptor in locations:
+                if receptor in loc or receptor == str(i):
+                    avg_emission_senstivity(dir_p,ncfiles, i, date_slice=date_slice,  zlib=zlib)
+                else:
+                    continue
