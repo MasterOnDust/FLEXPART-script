@@ -3,7 +3,6 @@ from dask.distributed import LocalCluster, Client
 import DUST
 import argparse as ap
 import pandas as pd
-
 import matplotlib.pyplot as plt
 
 if __name__ == "__main__":
@@ -63,10 +62,11 @@ if __name__ == "__main__":
         for dset, ax_i, color, p_size in zip(dsets,(ax,ax1),['saddlebrown', 'sandybrown'], p_sizes):
             temp_dset = dset.sel(time=date_slice)
             print(dset.receptor_name)
-            ax_i = temp_dset.srr.plot_time_series(ax=ax_i, label = dset.receptor_name + ' ' + p_size)
-            ax_i.legend()
+            ax_i = temp_dset.srr.plot_time_series(ax=ax_i, label = dset.receptor_name + ' ' + p_size, color=color)
+            
             ax_i.grid(linestyle='-')
-        ax1.axes.xaxis.label.set_visible(False)
+        fig.legend()
+        ax.axes.xaxis.label.set_visible(False)
         plt.savefig(outpath+'/{}_{}_{}_{}'.format(data_var,loc_name, date_slice.start, date_slice.stop) + '.png'
                                 , dpi=300, bbox_inches='tight')
 
