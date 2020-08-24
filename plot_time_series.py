@@ -1,5 +1,5 @@
 import xarray as xr
-from dask.distributed import LocalCluster
+from dask.distributed import LocalCluster, Client
 import DUST
 import argparse as ap
 import pandas as pd
@@ -15,6 +15,7 @@ if __name__ == "__main__":
     parser.add_argument('--seasonal','--s', action='store_true', help='''create seasonal time series 
                         disregard etime and stime''')
     parser.add_argument('--out_dir', '--op' ,help='path to where output should be stored', default='.')
+    parser.add_argument('--use_cluster', '--uc',action='store_true')
     args = parser.parse_args()
     seasonal = args.seasonal
     e_time = args.etime
@@ -22,8 +23,14 @@ if __name__ == "__main__":
     path_2micron = args.path_2micron
     path_20micron = args.path_20micron
     outpath = args.out_dir
+    use_cluster = args.use_cluster
     date_slices = []
 
+    if use_cluster == True:
+        cluster = LocalCluster(n_workers=32, threads_per_worker=1, memory_limit='16GB')
+        client= Client(cluster)
+        print(cluster)
+        
     d0 = xr.open_dataset(path_2micron[0])
     loc_name = d0.receptor_name.split()[0]
     data_var = d0.srr.var
