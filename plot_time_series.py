@@ -53,14 +53,16 @@ if __name__ == "__main__":
     for path in [path_2micron, path_20micron]:
         dset = xr.open_dataset(path)
         dset = dset.srr.make_time_seires()
+        dset = dset.persist()
         dset.to_netcdf(outpath +'/{}_{}_2019'.format(data_var, loc_name) + '.nc')
-        dsets.append(dset.persist()) 
+        dsets.append(dset) 
 
     for date_slice in date_slices:
         fig, (ax,ax1) = plt.subplots(2,1,sharex=True, sharey=True, figsize=(16,5))
         
         for dset, ax_i, color, p_size in zip(dsets,(ax,ax1),['saddlebrown', 'sandybrown'], p_sizes):
             temp_dset = dset.sel(time=date_slice)
+            print(dset.receptor_name)
             ax_i = temp_dset.srr.plot_time_series(ax=ax_i, label = dset.receptor_name + ' ' + p_size)
             ax_i.legend()
             ax_i.grid(linestyle='-')
