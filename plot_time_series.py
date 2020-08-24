@@ -31,7 +31,7 @@ if __name__ == "__main__":
 
     d0 = xr.open_dataset(path_2micron)
     relcom = d0.receptor_name.split()
-    loc_name = relcom.split()[0]
+    loc_name = relcom[0]
     data_var = d0.srr.var
     d0.close()
     if outpath.endswith('/'):
