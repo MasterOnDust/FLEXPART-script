@@ -53,7 +53,7 @@ if __name__ == "__main__":
         dset = xr.open_dataset(path, chunks={'time': 10})
         dset = dset.srr.make_time_seires()
         dset = dset.persist()
-        dset.to_netcdf(outpath +'/{}_{}_2019'.format(data_var, loc_name) + '.nc')
+        dset.to_netcdf(outpath +'/{}_{}_2019'.format(data_var, "_".join(dset.receptor_name.split())) + '.nc')
         dsets.append(dset)
 
     for date_slice in date_slices:
