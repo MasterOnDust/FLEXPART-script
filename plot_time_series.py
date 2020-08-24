@@ -4,6 +4,8 @@ import DUST
 import argparse as ap
 import pandas as pd
 import matplotlib.pyplot as plt
+import os
+import shutil
 
 if __name__ == "__main__":
     parser = ap.ArgumentParser(description='Plot timeseries of Concentration/Dry-/Wet deposition')
@@ -15,6 +17,7 @@ if __name__ == "__main__":
                         disregard etime and stime''')
     parser.add_argument('--out_dir', '--op' ,help='path to where output should be stored', default='.')
     parser.add_argument('--use_cluster', '--uc',action='store_true')
+    parser.add_argument('--to_netCDF', '--to_nc', action='store_true', help = 'enable saving timeseries as netCDF')
     args = parser.parse_args()
     seasonal = args.seasonal
     e_time = args.etime
@@ -23,17 +26,34 @@ if __name__ == "__main__":
     path_20micron = args.path_20micron
     outpath = args.out_dir
     use_cluster = args.use_cluster
+    to_netcdf = args.to_netCDF
     date_slices = []
+
+    d0 = xr.open_dataset(path_2micron)
+    relcom = d0.receptor_name.split()
+    loc_name = relcom.split()[0]
+    data_var = d0.srr.var
+    d0.close()
+    if outpath.endswith('/'):
+        pass
+    else:
+        outpath = outpath +'/'
+    outpath = outpath + '{}_{}_2019'.format(data_var,loc_name)
+    try:
+        
+        os.mkdir(outpath)
+    except FileExistsError:
+        shutil.rmtree(outpath)
+        os.mkdir(outpath)
+
+
 
     if use_cluster == True:
         cluster = LocalCluster(n_workers=32, threads_per_worker=1, memory_limit='16GB')
         client= Client(cluster)
         print(cluster)
 
-    d0 = xr.open_dataset(path_2micron)
-    loc_name = d0.receptor_name.split()[0]
-    data_var = d0.srr.var
-    d0.close()
+
     p_sizes = ['2micron $\mu m$', '20 $\mu m$']
     if seasonal == True:
         date_slices.append(slice('2019-03-01','2019-05-31'))
@@ -53,7 +73,8 @@ if __name__ == "__main__":
         dset = xr.open_dataset(path, chunks={'time': 10})
         dset = dset.srr.make_time_seires()
         dset = dset.persist()
-        dset.to_netcdf(outpath +'/{}_{}_2019'.format(data_var, "_".join(dset.receptor_name.split())) + '.nc')
+        if to_netcdf:
+            dset.to_netcdf(outpath +'/{}_{}_2019'.format(data_var, "_".join(dset.receptor_name.split())) + '.nc')
         dsets.append(dset)
 
     for date_slice in date_slices:
