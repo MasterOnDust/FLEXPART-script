@@ -65,7 +65,8 @@ if __name__ == "__main__":
             ax_i = temp_dset.srr.plot_time_series(ax=ax_i, label = dset.receptor_name + ' ' + p_size, color=color)
             
             ax_i.grid(linestyle='-')
-        fig.legend()
+        ax.legend()
+        ax1.legend()
         ax.axes.xaxis.label.set_visible(False)
         plt.savefig(outpath+'/{}_{}_{}_{}'.format(data_var,loc_name, date_slice.start, date_slice.stop) + '.png'
                                 , dpi=300, bbox_inches='tight')
