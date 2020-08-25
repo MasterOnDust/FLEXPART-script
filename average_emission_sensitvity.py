@@ -10,7 +10,7 @@ import shutil
 
 import argparse as ap
 
-from dask.distributed import Client
+from dask.distributed import Client, LocalCluster
 
 def not_usefull(ds):
     essentials = ['RELCOM','RELLNG1','RELLNG2','RELLAT1','RELLAT2','RELZZ1','RELZZ2',
@@ -85,7 +85,7 @@ def avg_emission_senstivity(path, ncfiles, pointspec ,date_slice=None, data_var=
         # If netcdf file exist delete old one
         os.remove(outFileName)
         ncfile = Dataset(outFileName, 'w', format='NETCDF4')
-    
+
     ncfile.title = 'Flexpart emission sensitivity'
     ncfile.history = "Created " + time.ctime(time.time())
     # ncfile.flexpart_v = d0.source
@@ -136,8 +136,8 @@ if __name__ == "__main__":
     defaultLocations = 'ALL'
     helpLocation = "Name or integer correspoding to location defined in FLEXPART RELEASE file"
     helpZlib = "Whether to use zlib compression"
-    
-    parser = ap.ArgumentParser(description='''Averages emission sensitivities 
+
+    parser = ap.ArgumentParser(description='''Averages emission sensitivities
     from FLEXPART netCDF files''')
 
     parser.add_argument('--out_path', '--op', default='.', help='Path to where averaged output will be stored')
@@ -158,7 +158,7 @@ if __name__ == "__main__":
     create_client = args.use_client
     ncfiles = glob.glob(path + '/**/grid*.nc', recursive=True)
     ncfiles.sort()
-    
+
 
     d = xr.open_dataset(ncfiles[0])
     relCOMS = d.RELCOM
@@ -169,9 +169,11 @@ if __name__ == "__main__":
         e_time = pd.to_datetime(ncfiles[-1][-17:-3]).strftime('%Y-%m-%d')
     if s_time == None:
         s_time = pd.to_datetime(ncfiles[0][-17:-3]).strftime('%Y-%m-%d')
-
+    print(create_client)
     if create_client==True:
-        client = Client()
+        cluster = LocalCluster(n_workers=32, threads_per_worker=1, memory_limit='16GB')
+        client= Client(cluster)
+        print(cluster)
 
     date_slice = slice(s_time, e_time)
     if ind_receptor == 1:
@@ -187,7 +189,7 @@ if __name__ == "__main__":
     try:
         os.mkdir(dir_p)
     except FileExistsError:
- 
+
         shutil.rmtree(dir_p)
         os.mkdir(dir_p)
 
