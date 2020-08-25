@@ -8,7 +8,7 @@ import os
 import glob
 
 def plot_map_emission_sensitivity(path_2micron, path_20micron, location,
-                                    height=100, outpath='.', season_str=''):
+                                    height=100, outpath='.'):
 
     p_sizes = ['2 $\mu m$', '20 $\mu m$']
     fig, (ax, ax1) = plt.subplots(2,1,subplot_kw={'projection':ccrs.PlateCarree()}, figsize= (18,8))
@@ -34,7 +34,8 @@ def plot_map_emission_sensitivity(path_2micron, path_20micron, location,
         ax_i.text(0.2,0.1, p_size,transform =ax.transAxes, horizontalalignment='center', verticalalignment='center',
                 bbox={'facecolor': 'white', 'alpha': 0.5, 'pad': 5}, fontsize=16)
         
-    ax.set_title('Averaged {} emission sensitivity {}'.format(title_str, season_str))
+    ax.set_title('Averaged {} emission sensitivity {}-{}'.format(title_str,dset.avg_window_start,
+                                            dset.avg_window_end))
     ax1.axes.title.set_visible(False)
     plt.savefig('{}_{}_{}m_{}_{}.png'.format(dset.varName,location,height,
                     dset.avg_window_start, dset.avg_window_end), dpi=300, bbox_inches='tight')
