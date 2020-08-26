@@ -33,7 +33,7 @@ def create_time_series(path_2micron,path_20micron, outpath='.',seasonal=True,
 
 
 
-    p_sizes = ['2micron $\mu m$', '20 $\mu m$']
+    p_sizes = ['2 $\mu m$', '20 $\mu m$']
     if seasonal == True:
         date_slices.append(slice('2019-03-01','2019-05-31'))
         date_slices.append(slice('2019-06-01', '2019-08-31'))
