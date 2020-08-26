@@ -170,7 +170,7 @@ if __name__=="__main__":
     parser = ap.ArgumentParser()
     parser.add_argument('--test', help="Setup one simulation, for check if setting is correct without submiting", action="store_true")
     parser.add_argument('--testAndSubmit', '--ts', help ="Setup one simulation and submit job", action="store_true")
-    parser.add_argument('--path', '--p', help='Path to file containting simulation settings', default='flexpart_setup.py')
+    parser.add_argument('path', help='Path to file containting simulation settings', default='flexpart_setup.py')
     parser.add_argument('--absPath', '--ap', help='Absolute path to topdirectory where flexpart simulation will be created', default=None)
     args = parser.parse_args()
 
@@ -194,7 +194,10 @@ if __name__=="__main__":
     sim.abs_path = os.path.abspath(sim.abs_path)
 
     site_dict = tracing_the_winds_sites()
-    site_list = [site_dict[loc] for loc in sim.locations]
+    if sim.locations == 'ALL':
+        site_list = [site_dict[loc] for loc in site_dict.keys()]
+    else:
+        site_list = [site_dict[loc] for loc in sim.locations]
     createParentDir()
     setup_flexpart(site_list)
 
