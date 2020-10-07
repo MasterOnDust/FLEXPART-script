@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 from params import sites
 import argparse as ap
 import os
@@ -91,7 +93,7 @@ def submit_job(dateI, folderName):
 
         fh.writelines('echo \"{} ,       COMPLETED \" >> {}/COMPLETED_RUNS \n'.format(folderName,sim.abs_path))
         fh.writelines('exit 0' )
-    os.system("sbatch %s" %job_file)
+#     os.system("sbatch %s" %job_file)
 
 def makefolderStruct(dateI):
     folderName = sim.abs_path + '/' + dateI.strftime("%Y%m%d_%H")
