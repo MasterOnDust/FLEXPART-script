@@ -1,0 +1,10 @@
+{
+    "Simulation_params" :{},
+    "Job_params": {},
+    "Paths" : {
+        "abs_path" : "/home/centos/FLEXPART-script/Test",
+        "path_to_forcing" : "/cluster/work/users/ovewh/AVAILABLE_WINDFIELDS",
+        "flexpart_input_path" : "/cluster/projects/nn2806k/ovewh/flexpart/FLEXPART-script/FLEXPART_input"
+    }
+    
+}
