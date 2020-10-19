@@ -15,6 +15,8 @@ def write_namelist(params_dict,path):
     nml.write(path, force=True)
 
 def write_pathnames(folderName, paths):
+    """ Write pathnames file """
+
     with open(folderName + '/pathnames', 'w') as pn:
         pn.writelines('./options/\n')
         pn.writelines('./output/\n')
@@ -78,6 +80,7 @@ def makefolderStruct(dateI,paths):
     return folderName
 
 def update_dict(d, u):
+    """Update dictionary recusively"""
     for k, v in u.items():
         if isinstance(v, collections.abc.Mapping):
             d[k] = update_dict(d.get(k, {}), v)
@@ -166,6 +169,7 @@ def setup_flexpart(settings=None):
 
 
 def createParentDir(paths):
+    """create parent directory"""
     try:
         os.mkdir(paths["abs_path"])
     except FileExistsError:
