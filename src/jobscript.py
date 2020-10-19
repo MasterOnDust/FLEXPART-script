@@ -27,16 +27,19 @@ def write_pathnames(folderName, paths):
 
 
 
-def create_sbatct_file(folderName,jobscript_params, paths,date):
-    job_file = folderName + '/submit_' + date + '.sh'
+def write_sbatct_file(jobscript_params,daterange, paths):
+    date0 = daterange.tolist()[0].strftime("%Y%m%d")
+    date1 = daterange.tolist()[-1].strftime("%Y%m%d")
+    job_file = paths['abs_path'] + '/submit_flexpart.sh'
     with open(job_file, 'w') as fh:
         fh.writelines("#!/bin/bash\n")
         for option, setting in settings.items():
             fh.writelines("#SBATCH --{}={}\n".format(option,setting))
-        fh.writelines("#SBATCH --job-name=FLEXPART_{}\n".format(date))
-        fh.writelines("#SBATCH --error={}/out_{}.err\n".format(folderName,date))
-        fh.writelines("#SBATCH --output={}/out_{}.out\n".format(folderName,date))
+        fh.writelines("#SBATCH --job-name=FLEXPART_{}\n".format(date0))
+        fh.writelines("#SBATCH --error={}/out_{}.err\n".format(paths['abs_path'],date0))
+        fh.writelines("#SBATCH --output={}/out_{}.out\n".format(paths['abs_path'],date0))
         fh.writelines("#SBATCH --mail-type=FAIL\n")
+        fh.writelines("#SBATCH --array=1-4")
         fh.writelines('set -o errexit\n')
         fh.writelines('set -o nounset\n')
         fh.writelines('module --quiet purge\n')
@@ -44,11 +47,12 @@ def create_sbatct_file(folderName,jobscript_params, paths,date):
         fh.writelines('module load ecCodes/2.9.2-intel-2018b\n')
         fh.writelines('module load netCDF-Fortran/4.4.4-intel-2018b\n')
         fh.writelines('export PATH={}:$PATH\n'.format(paths["flexpart_src"]))
-        fh.writelines('cd {}\n'.format(folderName))
+        fh.writelines('$(sed -n \"${{SLURM_ARRAY_TASK_ID}}p\" paths.txt)\n')
+        fh.writelines('cd $DIR\n')
         fh.writelines("time FLEXPART\n")
 
-        fh.writelines('echo \"{} ,       COMPLETED \" >> {}/COMPLETED_RUNS \n'.format(folderName,
-                    paths["abs_path"]))
+        # fh.writelines('echo \"{} ,       COMPLETED \" >> {}/COMPLETED_RUNS \n'.format(folderName,
+        #             paths["abs_path"]))
         fh.writelines('exit 0' )
 
 
@@ -139,6 +143,7 @@ def setup_flexpart(settings=None):
     species_params = params['Species_Params'] 
     site_dict = params['Receptor_locations']
     release_dict = params['Release_params']
+    job_pramas = params["Job_params"]
     
 
     with open(paths["abs_path"] + "/COMPLETED_RUNS", "w") as cr:
@@ -149,21 +154,26 @@ def setup_flexpart(settings=None):
                            end=e, freq=simulation_params["time_step"])
     sim_lenght = pd.to_timedelta(simulation_params["lenght_of_simulation"])
     release_duration = pd.to_timedelta(simulation_params["release_intervall"])
-
+    dir_list = []
     for date in date_range:
-          command['IBDATE'] = (date+sim_lenght).strftime('%Y%m%d')
-          command['IBTIME'] =  (date+sim_lenght).strftime('%H%M%S')
-          command['IEDATE'] = date.strftime('%Y%m%d')
-          command['IETIME'] = date.strftime('%H%M%S')
+        command['IBDATE'] = (date+sim_lenght).strftime('%Y%m%d')
+        command['IBTIME'] =  (date+sim_lenght).strftime('%H%M%S')
+        command['IEDATE'] = date.strftime('%Y%m%d')
+        command['IETIME'] = date.strftime('%H%M%S')
 
-          folderName = makefolderStruct(date, paths)
-          write_namelist({'COMMAND':command},folderName + '/options/COMMAND')
-          write_namelist({'OUTGRID':outgrid}, folderName + '/options/COMMAND')
-          write_namelist({'SPECIES_PARAMS': species_params}, folderName + '/options/SPECIES/SPECIES_001')
-          write_pathnames(folderName,paths)
-          write_release_file(folderName + '/options/RELEASES', site_dict, 
-                                    release_dict,date, release_duration)
+        folderName = makefolderStruct(date, paths)
+        write_namelist({'COMMAND':command},folderName + '/options/COMMAND')
+        write_namelist({'OUTGRID':outgrid}, folderName + '/options/COMMAND')
+        write_namelist({'SPECIES_PARAMS': species_params}, folderName + '/options/SPECIES/SPECIES_001')
+        write_pathnames(folderName,paths)
+        write_release_file(folderName + '/options/RELEASES', site_dict, 
+                                release_dict,date, release_duration)
+        dir_list.append(folderName)
 
+    with open(os.path.join(paths['abs_path'], 'paths.txt'), 'w') as outfile:
+         for path in dir_list:
+             outfile.writelines(path + '\n')
+    write_sbatct_file(job_pramas, date_range, paths)
     return params
 
 
