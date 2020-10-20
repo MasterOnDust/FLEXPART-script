@@ -8,10 +8,19 @@ import f90nml
 import json
 import collections.abc
 
+def write_to_file(params_dict,path, identifier):
+    with open(path, 'w') as outfile:
+        outfile.writelines('&{}\n'.format(identifier))
+        for option, setting in params_dict.items():
+            outfile.writelines(option + ' = ' + setting + ',\n')
+        outfile.writelines('/')
+
+
 def write_namelist(params_dict,path):
     nml = f90nml.Namelist(params_dict)
     nml.end_comma = True
     nml.uppercase = True
+    nml.indent = ''
     nml.write(path, force=True)
 
 def write_pathnames(folderName, paths):
@@ -33,13 +42,13 @@ def write_sbatct_file(jobscript_params,daterange, paths):
     job_file = paths['abs_path'] + '/submit_flexpart.sh'
     with open(job_file, 'w') as fh:
         fh.writelines("#!/bin/bash\n")
-        for option, setting in settings.items():
+        for option, setting in jobscript_params.items():
             fh.writelines("#SBATCH --{}={}\n".format(option,setting))
         fh.writelines("#SBATCH --job-name=FLEXPART_{}\n".format(date0))
         fh.writelines("#SBATCH --error={}/out_{}.err\n".format(paths['abs_path'],date0))
         fh.writelines("#SBATCH --output={}/out_{}.out\n".format(paths['abs_path'],date0))
         fh.writelines("#SBATCH --mail-type=FAIL\n")
-        fh.writelines("#SBATCH --array=1-4")
+        fh.writelines("#SBATCH --array=1-4\n")
         fh.writelines('set -o errexit\n')
         fh.writelines('set -o nounset\n')
         fh.writelines('module --quiet purge\n')
@@ -47,7 +56,7 @@ def write_sbatct_file(jobscript_params,daterange, paths):
         fh.writelines('module load ecCodes/2.9.2-intel-2018b\n')
         fh.writelines('module load netCDF-Fortran/4.4.4-intel-2018b\n')
         fh.writelines('export PATH={}:$PATH\n'.format(paths["flexpart_src"]))
-        fh.writelines('$(sed -n \"${{SLURM_ARRAY_TASK_ID}}p\" paths.txt)\n')
+        fh.writelines('$(sed -n \"${SLURM_ARRAY_TASK_ID}p\" paths.txt)\n')
         fh.writelines('cd $DIR\n')
         fh.writelines("time FLEXPART\n")
 
@@ -99,16 +108,16 @@ def write_release_file(path, site_dict, release_dict
     with open(path, 'w') as outfile:
         outfile.writelines('&RELEASES_CTRL\n')
         outfile.writelines('NSPEC = {},\n'.format(len(site_dict)))
-        outfile.writelines('SPECNUM_REL = {}*1\n'.format(len(site_dict)))
+        outfile.writelines('SPECNUM_REL = {}*1,\n'.format(len(site_dict)))
         outfile.writelines('/\n')
         rel_comment = release_dict.pop('COMMENT')
         for key, site in site_dict.items():
             
             temp_dict = release_dict
             temp_dict['LON1'] = site['lon']
-            temp_dict['LON1'] = site['lon']
+            temp_dict['LON2'] = site['lon']
             temp_dict['LAT1'] = site['lat']
-            temp_dict['LAT1'] = site['lat']
+            temp_dict['LAT2'] = site['lat']
             temp_dict['IDATE1'] = (dateI+release_duration).strftime('%Y%m%d')
             temp_dict['ITIME1'] = (dateI+release_duration).strftime('%H%M%S')
             temp_dict['IDATE2'] = dateI.strftime('%Y%m%d')
@@ -145,6 +154,7 @@ def setup_flexpart(settings=None):
     release_dict = params['Release_params']
     job_pramas = params["Job_params"]
     
+    species_params["PSPECIES"] = '\"' +species_params["PSPECIES"]+ '\"'
 
     with open(paths["abs_path"] + "/COMPLETED_RUNS", "w") as cr:
         cr.writelines("Path,            STATUS \n")
@@ -162,9 +172,9 @@ def setup_flexpart(settings=None):
         command['IETIME'] = date.strftime('%H%M%S')
 
         folderName = makefolderStruct(date, paths)
-        write_namelist({'COMMAND':command},folderName + '/options/COMMAND')
-        write_namelist({'OUTGRID':outgrid}, folderName + '/options/COMMAND')
-        write_namelist({'SPECIES_PARAMS': species_params}, folderName + '/options/SPECIES/SPECIES_001')
+        write_to_file(command,folderName + '/options/COMMAND', 'COMMAND')
+        write_to_file(outgrid, folderName + '/options/OUTGRID', 'OUTGRID')
+        write_to_file(species_params, folderName + '/options/SPECIES/SPECIES_001','SPECIES_PARAMS')
         write_pathnames(folderName,paths)
         write_release_file(folderName + '/options/RELEASES', site_dict, 
                                 release_dict,date, release_duration)
