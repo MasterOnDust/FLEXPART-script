@@ -26,4 +26,4 @@ To test your FLEXPART simulation is configured correctly, you can run a test sim
 
 ### Contact
 
-If you got any questions or want to contribute, please contact me at ovehaugv@outlook.cpm
+If you got any questions or want to contribute, please contact me at ovehaugv@outlook.com
