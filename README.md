@@ -1,30 +1,29 @@
 # FLEXPART-script
-Python script for managing and setting up FLEXPART simulation
+Python script for setting up many backward FLEXPART simulations. 
 
 ## Discription:
-- flexpart_simulation.py , input parameters and settings for the flexpart, and settings for the 
-slurm jobscript
-- params.py , store the different input parameters set in flexpart_simulation.py
-- jobscript creates folder structure containing the specific inputfiles ,
-slurm job script and submit jobscript to queue.
+- jobscript.py creates folder structure containing the specific inputfiles. In addition it create a slurm job script for submiting to the queue. 
+The job is submitted as an array job and which can be devided into sub array jobs, to avoid having to many jobs in the queue at once.
 
 ## Usage:
-First configure the flexpart simulation by copying the flexpart_setup.py file. The path to the flexpart_setup file has to be 
-specified with the --path argument
+First configure your flexpart simulation by editing settings.json file. You can also change the default settings in the params.json file. 
 ```
- $python jobscript --h
- usage: jobscript.py [-h] [--test] [--testAndSubmit] [--path PATH] [--absPath ABSPATH]
+usage: jobscript.py [-h] [--absPath ABSPATH] [--edate EDATE] [--bdate BDATE] path
+
+positional arguments:
+  path                  Path json to file containting simulation settings
 
 optional arguments:
   -h, --help            show this help message and exit
-  --test                Setup one simulation, for check if setting is correct without submiting
-  --testAndSubmit, --ts
-                        Setup one simulation and submit job
-  --path PATH, --p PATH
-                        Path to file containting simulation settings
   --absPath ABSPATH, --ap ABSPATH
                         Absolute path to topdirectory where flexpart simulation will be created
+  --edate EDATE, --ed EDATE
+                        date of last flexpart run
+  --bdate BDATE, --bd BDATE
+                        date of fist flexpart run
 ```
-For testing jobscript.py --ts submit one 
-flexpart simulation to the queue, and jobscript --test setup flexpart simulation without submitting to 
-the jobqueue
+To test your FLEXPART simulation is configured correctly, you can run a test simulation directly in one of the simulation directories, which has been created. 
+
+### Contact
+
+If you got any questions or want to contribute, please contact me at ovehaugv@outlook.com
