@@ -16,7 +16,8 @@
         "time": "1:00:00",
         "ntasks":"1",
         "mem-per-cpu":"6G",
-        "mail-user":"ovewh@student.geo.uio.no"
+        "mail-user":"ovewh@student.geo.uio.no",
+        "array" : "1-300"
     },
     
     "Paths" : {
