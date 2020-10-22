@@ -2,8 +2,9 @@
 Python script for setting up many backward FLEXPART simulations. 
 
 ## Discription:
-- jobscript.py creates folder structure containing the specific inputfiles. In addition it create a slurm job script for submiting to the queue. 
-The job is submitted as an array job and which can be devided into sub array jobs, to avoid having to many jobs in the queue at once.
+- jobscript.py creates folder structure containing the specific inputfiles. In addition it creates a slurm job script for submiting to the queue. 
+The job is submitted as an array job and which can be devided into sub array jobs, to avoid having to many jobs in the queue at once. Multiple simulations
+can also be assign to each job.
 
 ## Usage:
 First configure your flexpart simulation by editing settings.json file. You can also change the default settings in the params.json file. 
