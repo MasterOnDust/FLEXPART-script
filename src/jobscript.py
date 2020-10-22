@@ -36,32 +36,40 @@ def write_pathnames(folderName, paths):
 
 
 
-def write_sbatct_file(jobscript_params,date, paths, batch_number):
+def write_sbatch_file(jobscript_params,date, paths, batch_number):
+    """Write sbatch slurm script for submitting array job"""
     date0 = date.strftime("%Y%m%d")
+    jobscript_params = jobscript_params.copy()
+    n_simulations_per_task = jobscript_params.pop('n_simulations_per_task')
 #     date1 = daterange.tolist()[-1].strftime("%Y%m%d")
-    job_file = paths['abs_path'] + '/submit_flexpart.sh'
+    job_file = paths['abs_path'] + '/submit_flexpart{}.sh'.format(date0)
     with open(job_file, 'w') as fh:
         fh.writelines("#!/bin/bash\n")
         for option, setting in jobscript_params.items():
             fh.writelines("#SBATCH --{}={}\n".format(option,setting))
         fh.writelines("#SBATCH --job-name=FLEXPART_{}\n".format(date0))
-        fh.writelines("#SBATCH --error={}/log/out_%A_%a{}.err\n".format(paths['abs_path'],date0))
-        fh.writelines("#SBATCH --output={}/log/out_%A_%a_{}.out\n".format(paths['abs_path'],date0))
+        fh.writelines("#SBATCH --error={}/log/out_%a{}.err\n".format(paths['abs_path'],date0))
+        fh.writelines("#SBATCH --output={}/log/out_%a_{}.out\n".format(paths['abs_path'],date0))
         fh.writelines("#SBATCH --mail-type=FAIL\n")
-#         fh.writelines("#SBATCH --array=1-{}\n".)
         fh.writelines('set -o errexit\n')
         fh.writelines('set -o nounset\n')
         fh.writelines('module --quiet purge\n')
-
         fh.writelines('module load ecCodes/2.9.2-intel-2018b\n')
         fh.writelines('module load netCDF-Fortran/4.4.4-intel-2018b\n')
         fh.writelines('export PATH={}:$PATH\n'.format(paths["flexpart_src"]))
-        fh.writelines('DIR=$(sed -n \"${SLURM_ARRAY_TASK_ID}\"' + ' paths{}.txt)\n'.format(batch_number))
-        fh.writelines('cd $DIR\n')
-        fh.writelines("time FLEXPART\n")
-
-        fh.writelines('echo \"$DIR ,       COMPLETED \" >> {}/COMPLETED_RUNS \n'.format(
+        fh.writelines('for ((i=1;i<={};i++))\n'.format(n_simulations_per_task))
+        fh.writelines('do\n')
+        fh.writelines('     let \"linenumber=((${SLURM_ARRAY_TASK_ID}-1)*{}+i)\"\n'.format(simulations_per_task))
+        fh.writelines('     INPATH=$(sed -n \"${linenumber}p\"' + ' {}/paths{}.txt)\n'.format(paths['abs_path'],batch_number))
+        fh.writelines('     if [ "$INPATH" == \"==\" ]; then\n')
+        fh.writelines('          echo \"End of file reached\"\n')
+        fh.writelines('     else\n')
+        fh.writelines('          cd $INPATH\n')
+        fh.writelines('          FLEXPART\n')
+        fh.writelines('          echo \"$INPATH,       COMPLETED \" >> {}/COMPLETED_RUNS \n'.format(
                     paths["abs_path"]))
+        fh.writelines('     fi\n')
+        fh.writelines('done\n')
         fh.writelines('exit 0' )
 
 
@@ -92,15 +100,6 @@ def makefolderStruct(dateI,paths):
     os.mkdir(folderName +'/options/SPECIES')
     return folderName
 
-def update_dict(d, u):
-    """Update dictionary recusively"""
-    for k, v in u.items():
-        if isinstance(v, collections.abc.Mapping):
-            d[k] = update_dict(d.get(k, {}), v)
-        else:
-            d[k] = v
-    return d
-
 def write_release_file(path, site_dict, release_dict
                             ,dateI , release_duration):
     release_dict = release_dict.copy()
@@ -129,30 +128,30 @@ def write_release_file(path, site_dict, release_dict
             outfile.writelines('/\n')
 
 
-def setup_flexpart(settings=None):
+def setup_flexpart(settings):
     __location__ = os.path.realpath(
             os.path.join(os.getcwd(), os.path.dirname(__file__)))
-    try:
-        with open(os.path.join(__location__ ,'params.json')) as default_params:
-            params = json.load(default_params)
-    except FileNotFoundError:
-        print("params.json not available in src!")
-        sys.exit()
+#     try:
+#         with open(os.path.join(__location__ ,'params.json')) as default_params:
+#             params = json.load(default_params)
+#     except FileNotFoundError:
+#         print("params.json not available in src!")
+#         sys.exit()
 
-    if settings:
-        params = update_dict(params, settings)
+#     if settings:
+#         params = update_dict(params, settings)
 
 
 
-    paths = params['Paths']
+    paths = settings['Paths']
     createParentDir(paths)
-    simulation_params = params['Simulation_params']
-    command = params['Command_Params']
-    outgrid = params['Outgrid_params']
-    species_params = params['Species_Params']
-    site_dict = params['Receptor_locations']
-    release_dict = params['Release_params']
-    job_params = params["Job_params"]
+    simulation_params = settings['Simulation_params']
+    command = settings['Command_Params']
+    outgrid = settings['Outgrid_params']
+    species_params = settings['Species_Params']
+    site_dict = settings['Receptor_locations']
+    release_dict = settings['Release_params']
+    job_params = settings["Job_params"]
 
     species_params["PSPECIES"] = '\"' +species_params["PSPECIES"]+ '\"'
 
@@ -179,7 +178,7 @@ def setup_flexpart(settings=None):
         write_release_file(folderName + '/options/RELEASES', site_dict,
                                 release_dict,date, release_duration)
         dir_list.append(folderName)
-    batch_size = int(job_params['array'].split('-')[1])
+    batch_size = int(job_params['array'].split('-')[1]*int(job_params['n_simulations_per_task']))
     batches = [dir_list]
     if len(dir_list) >= batch_size:
         batches = [dir_list[x:x+100] for x in range(0, len(dir_list), batch_size)]
@@ -189,15 +188,33 @@ def setup_flexpart(settings=None):
     for i, batch in enumerate(batches):
 
         path_file = os.path.join(paths['abs_path'], f'paths{i}.txt')
-        write_path_file(batch,path_file)
-        job_params['array'] = '1-{}'.format(len(batch)+1)
-        write_sbatct_file(job_params,pd.to_datetime(batch[0].split('/')[-1], format="%Y%m%d_%H"), paths,i)
-    return params
+        n_jobs = write_path_file(batch,path_file)
+        job_params['array'] = '1-{}'.format(round(n_jobs/int(job_params['n_simulations_per_task'])))
+        write_sbatch_file(job_params,pd.to_datetime(batch[0].split('/')[-1], format="%Y%m%d_%H"), paths,i)
+
+    return settings
 
 def write_path_file(batch, file_path):
+    n_jobs = 0
     with open(file_path, 'w') as outfile:
-         for path in batch:
-             outfile.writelines(path + '\n')
+        for path in (batch):
+            outfile.writelines(path + '\n')
+            n_jobs = n_jobs+1
+        outfile.writelines("==")
+    return n_jobs
+
+
+
+# def write_path_file(batch, file_path):
+#     n_jobs = 0
+#     with open(file_path, 'w') as outfile:
+#         for path1, path2 in zip(batch[1::2],batch[::2]):
+#             outfile.writelines(path1 + ', ' + path2 + '\n')
+#             n_jobs=n_jobs+1
+#         if len(batch) % 2!=0:
+#             outfile.writelines(batch[-1])
+#             n_jobs=n_jobs+1
+#     return n_jobs
 
 def createParentDir(paths):
     """create parent directory"""

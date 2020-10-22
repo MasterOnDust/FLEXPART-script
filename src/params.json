@@ -17,7 +17,8 @@
         "ntasks":"1",
         "mem-per-cpu":"6G",
         "mail-user":"ovewh@student.geo.uio.no",
-        "array" : "1-300"
+        "array" : "1-300",
+        "n_simulations_per_task" :"3"
     },
     
     "Paths" : {
