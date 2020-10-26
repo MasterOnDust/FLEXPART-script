@@ -1,12 +1,9 @@
 
 name: flexpart_script
 channels:
-  - pyviz
-  - anaconda
   - conda-forge
   - defaults
 dependencies:
   - pandas=1.1.3
   - python=3.8.5
-  - f90nml=1.1.2
   
