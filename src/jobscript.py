@@ -4,24 +4,16 @@ import os
 import pandas as pd
 import shutil
 import sys
-import f90nml
 import json
 import collections.abc
 
 def write_to_file(params_dict,path, identifier):
+    """Write dictionary containing flexpart settings to file"""
     with open(path, 'w') as outfile:
         outfile.writelines('&{}\n'.format(identifier))
         for option, setting in params_dict.items():
             outfile.writelines(option + ' = ' + setting + ',\n')
         outfile.writelines('/')
-
-
-def write_namelist(params_dict,path):
-    nml = f90nml.Namelist(params_dict)
-    nml.end_comma = True
-    nml.uppercase = True
-    nml.indent = ''
-    nml.write(path, force=True)
 
 def write_pathnames(folderName, paths):
     """ Write pathnames file """
@@ -75,24 +67,7 @@ def write_sbatch_file(jobscript_params,date, paths, batch_number):
 
 
 def makefolderStruct(dateI,paths):
-    """
-    DESCRIPTION
-    ===========
-
-        Sets up FLEXPART folder structure and return path to the folder.
-
-    USEAGE:
-    =======
-
-        folderName = makefolderStruct(dateI,paths)
-
-        params:
-            dateI pandas.dateTime object
-            paths dictionary containing FLEXPART paths.
-
-        return:
-            path to FLEXPART folder
-    """
+    """Create the folder structure for each flexpart simulation"""
     folderName = paths["abs_path"] + '/' + dateI.strftime("%Y%m%d_%H")
     os.mkdir(folderName)
     os.mkdir(folderName + '/options')
@@ -102,6 +77,7 @@ def makefolderStruct(dateI,paths):
 
 def write_release_file(path, site_dict, release_dict
                             ,dateI , release_duration):
+    """Create release file"""
     release_dict = release_dict.copy()
 
     with open(path, 'w') as outfile:
@@ -129,21 +105,9 @@ def write_release_file(path, site_dict, release_dict
 
 
 def setup_flexpart(settings):
-    __location__ = os.path.realpath(
-            os.path.join(os.getcwd(), os.path.dirname(__file__)))
-#     try:
-#         with open(os.path.join(__location__ ,'params.json')) as default_params:
-#             params = json.load(default_params)
-#     except FileNotFoundError:
-#         print("params.json not available in src!")
-#         sys.exit()
-
-#     if settings:
-#         params = update_dict(params, settings)
+    """Set up flexpart simulation directories and create slurm jobscript"""
 
 
-
-    paths = settings['Paths']
     createParentDir(paths)
     simulation_params = settings['Simulation_params']
     command = settings['Command_Params']
@@ -195,6 +159,7 @@ def setup_flexpart(settings):
     return settings
 
 def write_path_file(batch, file_path):
+    """Write the path of each flexpart simulation to file, so it can be read by the SLURM bash script"""
     n_jobs = 0
     with open(file_path, 'w') as outfile:
         for path in (batch):
@@ -203,18 +168,6 @@ def write_path_file(batch, file_path):
         outfile.writelines("==")
     return n_jobs
 
-
-
-# def write_path_file(batch, file_path):
-#     n_jobs = 0
-#     with open(file_path, 'w') as outfile:
-#         for path1, path2 in zip(batch[1::2],batch[::2]):
-#             outfile.writelines(path1 + ', ' + path2 + '\n')
-#             n_jobs=n_jobs+1
-#         if len(batch) % 2!=0:
-#             outfile.writelines(batch[-1])
-#             n_jobs=n_jobs+1
-#     return n_jobs
 
 def createParentDir(paths):
     """create parent directory"""
@@ -235,8 +188,6 @@ def createParentDir(paths):
 if __name__=="__main__":
 
     parser = ap.ArgumentParser()
-#     parser.add_argument('--test', help="Setup one simulation, for check if setting is correct without submiting", action="store_true")
-#     parser.add_argument('--testAndSubmit', '--ts', help ="Setup one simulation and submit job", action="store_true")
     parser.add_argument('path', help='Path json to file containting simulation settings')
     parser.add_argument('--absPath', '--ap', help='Absolute path to topdirectory where flexpart simulation will be created', default=None)
     parser.add_argument('--edate','--ed', help='date of last flexpart run', default=None)
@@ -246,10 +197,6 @@ if __name__=="__main__":
     test = False
     test_and_submit = False
 
-#     if args.test:
-#         test = True
-#     elif args.testAndSubmit:
-#         test_and_submit = True
     path = args.path
     abs_path = args.absPath
     e_date = args.edate
