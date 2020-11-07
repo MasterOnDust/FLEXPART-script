@@ -1,19 +1,30 @@
 #!/usr/bin/env python
 import argparse as ap
+from datetime import date
 import os
 import pandas as pd
 import shutil
 import sys
+
+from pandas.core.indexes.datetimes import date_range
+import f90nml
 import json
 import collections.abc
 
 def write_to_file(params_dict,path, identifier):
-    """Write dictionary containing flexpart settings to file"""
     with open(path, 'w') as outfile:
         outfile.writelines('&{}\n'.format(identifier))
         for option, setting in params_dict.items():
             outfile.writelines(option + ' = ' + setting + ',\n')
         outfile.writelines('/')
+
+
+def write_namelist(params_dict,path):
+    nml = f90nml.Namelist(params_dict)
+    nml.end_comma = True
+    nml.uppercase = True
+    nml.indent = ''
+    nml.write(path, force=True)
 
 def write_pathnames(folderName, paths):
     """ Write pathnames file """
@@ -66,18 +77,37 @@ def write_sbatch_file(jobscript_params,date, paths, batch_number):
 
 
 
-def makefolderStruct(dateI,paths):
-    """Create the folder structure for each flexpart simulation"""
-    folderName = paths["abs_path"] + '/' + dateI.strftime("%Y%m%d_%H")
+def makefolderStruct(dateI,paths, site_name=None):
+    """
+    DESCRIPTION
+    ===========
+
+        Sets up FLEXPART folder structure and return path to the folder.
+
+    USEAGE:
+    =======
+
+        folderName = makefolderStruct(dateI,paths)
+
+        params:
+            dateI pandas.dateTime object
+            paths dictionary containing FLEXPART paths.
+
+        return:
+            path to FLEXPART folder
+    """
+    if site_name:
+        folderName = paths["abs_path"] + '/' + dateI.strftime("%Y%m%d_%H") + site_name
+    else:
+        folderName = paths["abs_path"] + '/' + dateI.strftime("%Y%m%d_%H")
     os.mkdir(folderName)
     os.mkdir(folderName + '/options')
     os.mkdir(folderName + '/output')
     os.mkdir(folderName +'/options/SPECIES')
     return folderName
 
-def write_release_file(path, site_dict, release_dict
+def write_release_file_time_step(path, site_dict, release_dict
                             ,dateI , release_duration):
-    """Create release file"""
     release_dict = release_dict.copy()
 
     with open(path, 'w') as outfile:
@@ -104,10 +134,105 @@ def write_release_file(path, site_dict, release_dict
             outfile.writelines('/\n')
 
 
-def setup_flexpart(settings):
-    """Set up flexpart simulation directories and create slurm jobscript"""
+def write_release_file_per_site(path, site, release_dict, sdate, edate, time_step, release_duration='3h'):
+    """
+    Create RELEASE file with a new relese every time_step. 
+    Simulate longer periods of one location
+
+    """
+    release_dict = release_dict.copy()
+    dateRange = pd.date_range(sdate, edate, freq=time_step)
+    rel_comment = release_dict.pop('COMMENT')
+    with open(path, 'w') as outfile:
+        outfile.writelines('&RELEASES_CTRL\n')
+        outfile.writelines('NSPEC = 1,\n')
+        outfile.writelines('SPECNUM_REL = 1,\n')
+        outfile.writelines('/\n')
+        for date in dateRange:
+            temp_dict = release_dict
+            temp_dict['LON1'] = site['lon']
+            temp_dict['LON2'] = site['lon']
+            temp_dict['LAT1'] = site['lat']
+            temp_dict['LAT2'] = site['lat']
+            temp_dict['IDATE1'] = (date+release_duration).strftime('%Y%m%d')
+            temp_dict['ITIME1'] = (date+release_duration).strftime('%H%M%S')
+            temp_dict['IDATE2'] = date.strftime('%Y%m%d')
+            temp_dict['ITIME2'] = date.strftime('%H%M%S')
+            outfile.writelines('&RELEASE\n')
+            for option, setting in temp_dict.items():
+                outfile.writelines(option + ' = ' + setting + ',\n')
+            outfile.writelines('COMMENT = ' + date.strftime('%Y%m%d%H')  + '\"' + site['comment'] + ' '+ rel_comment + '\"\n')
+            outfile.writelines('/\n')
+
+def setup_flexpart_per_site(settings, freq='M'):
+    paths = settings['Paths']
+    createParentDir(paths)
+    simulation_params = settings['Simulation_params']
+    command = settings['Command_Params']
+    outgrid = settings['Outgrid_params']
+    species_params = settings['Species_Params']
+    site_dict = settings['Receptor_locations']
+    release_dict = settings['Release_params']
+    job_params = settings["Job_params"]
+    species_params["PSPECIES"] = '\"' +species_params["PSPECIES"]+ '\"'
+    s = pd.to_datetime(simulation_params['start_date']+' '+simulation_params["start_time"])
+    e = pd.to_datetime(simulation_params["end_date"]+' '+simulation_params["end_time"])
+    date_range = pd.date_range(start=s,
+                           end=e, freq=freq)
+    date_list = date_range.to_list()
+    date_list.insert(0,s)
+    date_list[-1] = e
+
+    with open(paths["abs_path"] + "/COMPLETED_RUNS", "w") as cr:
+        cr.writelines("Path,            STATUS \n")
+    
+    sim_lenght = pd.to_timedelta(simulation_params["lenght_of_simulation"])
+    release_duration = pd.to_timedelta(simulation_params["release_intervall"])
+    dir_list = []
+    for site in site_dict:
+        for i in range(1,len(date_list)):
+            command['IBDATE'] = (date_list[i-1]+sim_lenght).strftime('%Y%m%d')
+            command['IBTIME'] =  (date_list[i-1]+sim_lenght).strftime('%H%M%S')
+            command['IEDATE'] = date_list[i].strftime('%Y%m%d')
+            command['IETIME'] = date_list[i].strftime('%H%M%S')
+            folderName = makefolderStruct(date_list[i], paths)
+            write_to_file(command,folderName + '/options/COMMAND', 'COMMAND')
+            write_to_file(outgrid, folderName + '/options/OUTGRID', 'OUTGRID')
+            write_to_file(species_params, folderName + '/options/SPECIES/SPECIES_001','SPECIES_PARAMS')
+            write_pathnames(folderName,paths)
+            write_release_file_per_site(folderName + '/options/RELEASES', site,
+                                    release_dict,date_list[i-1], date_list[i], release_duration)
+            dir_list.append(folderName)
+    batch_size = int(job_params['array'].split('-')[1]*int(job_params['n_simulations_per_task']))
+    batches = [dir_list]
+    if len(dir_list) >= batch_size:
+        batches = [dir_list[x:x+100] for x in range(0, len(dir_list), batch_size)]
 
 
+    for i, batch in enumerate(batches):
+
+        path_file = os.path.join(paths['abs_path'], f'paths{i}.txt')
+        n_jobs = write_path_file(batch,path_file)
+        job_params['array'] = '1-{}'.format(round(n_jobs/int(job_params['n_simulations_per_task'])))
+        write_sbatch_file(job_params,pd.to_datetime(batch[0].split('/')[-1], format="%Y%m%d_%H"), paths,i)
+
+def setup_flexpart_per_time_step(settings):
+
+    __location__ = os.path.realpath(
+            os.path.join(os.getcwd(), os.path.dirname(__file__)))
+#     try:
+#         with open(os.path.join(__location__ ,'params.json')) as default_params:
+#             params = json.load(default_params)
+#     except FileNotFoundError:
+#         print("params.json not available in src!")
+#         sys.exit()
+
+#     if settings:
+#         params = update_dict(params, settings)
+
+
+
+    paths = settings['Paths']
     createParentDir(paths)
     simulation_params = settings['Simulation_params']
     command = settings['Command_Params']
@@ -139,7 +264,7 @@ def setup_flexpart(settings):
         write_to_file(outgrid, folderName + '/options/OUTGRID', 'OUTGRID')
         write_to_file(species_params, folderName + '/options/SPECIES/SPECIES_001','SPECIES_PARAMS')
         write_pathnames(folderName,paths)
-        write_release_file(folderName + '/options/RELEASES', site_dict,
+        write_release_file_time_step(folderName + '/options/RELEASES', site_dict,
                                 release_dict,date, release_duration)
         dir_list.append(folderName)
     batch_size = int(job_params['array'].split('-')[1]*int(job_params['n_simulations_per_task']))
@@ -159,7 +284,6 @@ def setup_flexpart(settings):
     return settings
 
 def write_path_file(batch, file_path):
-    """Write the path of each flexpart simulation to file, so it can be read by the SLURM bash script"""
     n_jobs = 0
     with open(file_path, 'w') as outfile:
         for path in (batch):
@@ -168,6 +292,18 @@ def write_path_file(batch, file_path):
         outfile.writelines("==")
     return n_jobs
 
+
+
+# def write_path_file(batch, file_path):
+#     n_jobs = 0
+#     with open(file_path, 'w') as outfile:
+#         for path1, path2 in zip(batch[1::2],batch[::2]):
+#             outfile.writelines(path1 + ', ' + path2 + '\n')
+#             n_jobs=n_jobs+1
+#         if len(batch) % 2!=0:
+#             outfile.writelines(batch[-1])
+#             n_jobs=n_jobs+1
+#     return n_jobs
 
 def createParentDir(paths):
     """create parent directory"""
@@ -188,6 +324,8 @@ def createParentDir(paths):
 if __name__=="__main__":
 
     parser = ap.ArgumentParser()
+#     parser.add_argument('--test', help="Setup one simulation, for check if setting is correct without submiting", action="store_true")
+#     parser.add_argument('--testAndSubmit', '--ts', help ="Setup one simulation and submit job", action="store_true")
     parser.add_argument('path', help='Path json to file containting simulation settings')
     parser.add_argument('--absPath', '--ap', help='Absolute path to topdirectory where flexpart simulation will be created', default=None)
     parser.add_argument('--edate','--ed', help='date of last flexpart run', default=None)
@@ -197,6 +335,10 @@ if __name__=="__main__":
     test = False
     test_and_submit = False
 
+#     if args.test:
+#         test = True
+#     elif args.testAndSubmit:
+#         test_and_submit = True
     path = args.path
     abs_path = args.absPath
     e_date = args.edate
