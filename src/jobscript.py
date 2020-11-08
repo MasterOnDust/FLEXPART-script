@@ -10,6 +10,7 @@ from pandas.core.indexes.datetimes import date_range
 import f90nml
 import json
 import collections.abc
+from IPython import embed
 
 def write_to_file(params_dict,path, identifier):
     with open(path, 'w') as outfile:
@@ -141,8 +142,11 @@ def write_release_file_per_site(path, site, release_dict, sdate, edate, time_ste
 
     """
     release_dict = release_dict.copy()
-    dateRange = pd.date_range(sdate, edate, freq=time_step)
+    print(sdate, edate)
+    dateRange = pd.date_range(start=sdate.strftime('%Y-%m-%d'), end=edate.strftime('%Y-%m-%d'), freq=time_step)
     rel_comment = release_dict.pop('COMMENT')
+    # print(dateRange)
+    # embed()
     with open(path, 'w') as outfile:
         outfile.writelines('&RELEASES_CTRL\n')
         outfile.writelines('NSPEC = 1,\n')
@@ -161,9 +165,16 @@ def write_release_file_per_site(path, site, release_dict, sdate, edate, time_ste
             outfile.writelines('&RELEASE\n')
             for option, setting in temp_dict.items():
                 outfile.writelines(option + ' = ' + setting + ',\n')
-            outfile.writelines('COMMENT = ' + date.strftime('%Y%m%d%H')  + '\"' + site['comment'] + ' '+ rel_comment + '\"\n')
+            outfile.writelines('COMMENT = ' + '\"' + date.strftime('%Y%m%d%H') + site['comment'] + ' '+ rel_comment + '\"\n')
             outfile.writelines('/\n')
-
+def write_ageclass(path,max_age):
+    lage_max = abs(pd.to_timedelta(max_age).total_seconds())
+    with open(path, 'w') as outfile:
+        outfile.writelines('&AGECLASS\n')
+        outfile.writelines('  NAGECLASS = 1,\n')
+        outfile.writelines('  LAGE = {}'.format(lage_max))
+        outfile.writelines('/')
+    
 def setup_flexpart_per_site(settings, freq='M'):
     paths = settings['Paths']
     createParentDir(paths)
@@ -189,48 +200,37 @@ def setup_flexpart_per_site(settings, freq='M'):
     sim_lenght = pd.to_timedelta(simulation_params["lenght_of_simulation"])
     release_duration = pd.to_timedelta(simulation_params["release_intervall"])
     dir_list = []
-    for site in site_dict:
+
+    command['LAGESPECTRA'] = '1'
+    for site, site_params in site_dict.items():
         for i in range(1,len(date_list)):
             command['IBDATE'] = (date_list[i-1]+sim_lenght).strftime('%Y%m%d')
             command['IBTIME'] =  (date_list[i-1]+sim_lenght).strftime('%H%M%S')
             command['IEDATE'] = date_list[i].strftime('%Y%m%d')
             command['IETIME'] = date_list[i].strftime('%H%M%S')
-            folderName = makefolderStruct(date_list[i], paths)
+            folderName = makefolderStruct(date_list[i], paths, site)
+            write_ageclass(folderName +'/options/AGECLASSES', sim_lenght)
             write_to_file(command,folderName + '/options/COMMAND', 'COMMAND')
             write_to_file(outgrid, folderName + '/options/OUTGRID', 'OUTGRID')
             write_to_file(species_params, folderName + '/options/SPECIES/SPECIES_001','SPECIES_PARAMS')
             write_pathnames(folderName,paths)
-            write_release_file_per_site(folderName + '/options/RELEASES', site,
-                                    release_dict,date_list[i-1], date_list[i], release_duration)
+            write_release_file_per_site(folderName + '/options/RELEASES', site_params,
+                                    release_dict,date_list[i-1], date_list[i], simulation_params['time_step'],release_duration)
             dir_list.append(folderName)
-    batch_size = int(job_params['array'].split('-')[1]*int(job_params['n_simulations_per_task']))
-    batches = [dir_list]
-    if len(dir_list) >= batch_size:
-        batches = [dir_list[x:x+100] for x in range(0, len(dir_list), batch_size)]
+    # batch_size = int(job_params['array'].split('-')[1]*int(job_params['n_simulations_per_task']))
+    # batches = [dir_list]
+    # if len(dir_list) >= batch_size:
+    #     batches = [dir_list[x:x+100] for x in range(0, len(dir_list), batch_size)]
 
 
-    for i, batch in enumerate(batches):
+    # for i, batch in enumerate(batches):
 
-        path_file = os.path.join(paths['abs_path'], f'paths{i}.txt')
-        n_jobs = write_path_file(batch,path_file)
-        job_params['array'] = '1-{}'.format(round(n_jobs/int(job_params['n_simulations_per_task'])))
-        write_sbatch_file(job_params,pd.to_datetime(batch[0].split('/')[-1], format="%Y%m%d_%H"), paths,i)
+    #     path_file = os.path.join(paths['abs_path'], f'paths{i}.txt')
+    #     n_jobs = write_path_file(batch,path_file)
+    #     job_params['array'] = '1-{}'.format(round(n_jobs/int(job_params['n_simulations_per_task'])))
+    #     write_sbatch_file(job_params,pd.to_datetime(batch[0].split('/')[-1], format="%Y%m%d_%H"), paths,i)
 
 def setup_flexpart_per_time_step(settings):
-
-    __location__ = os.path.realpath(
-            os.path.join(os.getcwd(), os.path.dirname(__file__)))
-#     try:
-#         with open(os.path.join(__location__ ,'params.json')) as default_params:
-#             params = json.load(default_params)
-#     except FileNotFoundError:
-#         print("params.json not available in src!")
-#         sys.exit()
-
-#     if settings:
-#         params = update_dict(params, settings)
-
-
 
     paths = settings['Paths']
     createParentDir(paths)
@@ -293,18 +293,6 @@ def write_path_file(batch, file_path):
     return n_jobs
 
 
-
-# def write_path_file(batch, file_path):
-#     n_jobs = 0
-#     with open(file_path, 'w') as outfile:
-#         for path1, path2 in zip(batch[1::2],batch[::2]):
-#             outfile.writelines(path1 + ', ' + path2 + '\n')
-#             n_jobs=n_jobs+1
-#         if len(batch) % 2!=0:
-#             outfile.writelines(batch[-1])
-#             n_jobs=n_jobs+1
-#     return n_jobs
-
 def createParentDir(paths):
     """create parent directory"""
     try:
@@ -324,25 +312,17 @@ def createParentDir(paths):
 if __name__=="__main__":
 
     parser = ap.ArgumentParser()
-#     parser.add_argument('--test', help="Setup one simulation, for check if setting is correct without submiting", action="store_true")
-#     parser.add_argument('--testAndSubmit', '--ts', help ="Setup one simulation and submit job", action="store_true")
     parser.add_argument('path', help='Path json to file containting simulation settings')
     parser.add_argument('--absPath', '--ap', help='Absolute path to topdirectory where flexpart simulation will be created', default=None)
     parser.add_argument('--edate','--ed', help='date of last flexpart run', default=None)
     parser.add_argument('--bdate', '--bd', help='date of fist flexpart run', default=None)
+    parser.add_argument('--per_location', '--pl', action='store_true')
     args = parser.parse_args()
-
-    test = False
-    test_and_submit = False
-
-#     if args.test:
-#         test = True
-#     elif args.testAndSubmit:
-#         test_and_submit = True
     path = args.path
     abs_path = args.absPath
     e_date = args.edate
     b_date = args.bdate
+    per_location = args.per_location
 
     with open(path) as config_file:
         settings = json.load(config_file)
@@ -352,5 +332,9 @@ if __name__=="__main__":
         settings['Simulation_params'].update({'end_date': e_date})
     if abs_path:
         settings['Paths'].update({'path_to_forcing': abs_path})
-    setup_flexpart(settings)
+    
+    if per_location:
+        setup_flexpart_per_site(settings)
+    else:
+        setup_flexpart_per_time_step(settings)
 
