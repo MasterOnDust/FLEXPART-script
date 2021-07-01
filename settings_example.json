@@ -1,0 +1,113 @@
+{
+    "Simulation_params": {
+        "start_date" : "2006-03-06", 
+        "start_time" : "00:00:00",
+        "end_date" : "2015-05-31",
+        "end_time" : "00:00:00",
+        "time_step" : "10800s",
+
+        "lenght_of_simulation" : "-5d",
+        "release_intervall" : "-10800s"
+    },
+
+    "Job_params": {
+
+        "account": "",
+        "time": "",
+        "ntasks":"1",
+        "mem-per-cpu":"8G",
+        "mail-user":""
+    },
+    
+    "Paths" : {
+        "abs_path" : "/absolute/path/to/simulation/folder",
+        "path_to_forcing" : "/path/to/file/with/availableforcing",
+        "flexpart_input_path" : "/path/folder/with/required/flexpart/input",
+        "flexpart_src" : "/path/to/where/flexpart/is/complied"
+    },
+
+
+    "Species_Params": {
+
+        "PSPECIES" : "FINE-SILT"       ,
+        "PDECAY"  : "-9.9"    ,
+        "PWETA_GAS": "-9.0000002E-10",
+        "PWETB_GAS" : "-9.900000"    ,
+        "PCRAIN_AERO" :  "1.000000" ,
+        "PCSNOW_AERO" : "1.000000"    ,
+        "PCCN_AERO"   : "0.45000000"    ,
+        "PIN_AERO"   : "0.1000000"    ,
+        "PRELDIFF":  "-9.900000"    ,
+        "PHENRY"  : "-9.0000002E-10",
+        "PF0" : "-9.000000"    ,
+        "PDENSITY" :  "2500.000"    ,
+        "PDQUER" : "2.0E-06",
+        "PDSIGMA" : "1.250"    ,
+        "PDRYVEL" :"-9.990"    ,
+        "PWEIGHTMOLAR" :  "-9.900000"    ,
+        "POHCCONST" : "-9.0000002E-10",
+        "POHDCONST":  "-9.9"   ,
+        "POHNCONST":  "2.0"
+        
+    },
+
+
+    "Outgrid_params" : {
+
+        "OUTLON0" :"60.00000"    ,
+        "OUTLAT0" :"30.00000"    ,
+        "NUMXGRID" :    "680",
+        "NUMYGRID" :"320",
+        "DXOUT" : "0.1000000"    ,
+        "DYOUT" :  "0.1000000"    ,
+        "OUTHEIGHTS":"100.0000    ,   500.0000    ,   1000.000    ,   5000.000"
+
+    },
+
+    "Command_Params" : {
+        "LDIRECT":"-1",
+        "IBDATE":"20190309",
+        "IBTIME":"060000",
+        "IEDATE":"20190310",
+        "IETIME":"120000",
+        "LOUTSTEP":"10800",
+        "LOUTAVER":"10800",
+        "LOUTSAMPLE":"900",
+        "ITSPLIT":"99999999",
+        "LSYNCTIME":"900",
+        "CTL" :"-5.0000000"    ,
+        "IFINE":"4",
+        "IOUT":"13",
+        "IPOUT":"0",
+        "LSUBGRID" :"1",
+        "LCONVECTION" :"1",
+        "LAGESPECTRA":"1",
+        "IPIN":"0",
+        "IOUTPUTFOREACHRELEASE" :"1",
+        "IFLUX":"0",
+        "MDOMAINFILL":"0",
+        "IND_SOURCE":"1",
+        "IND_RECEPTOR":"3",
+        "MQUASILAG":"0",
+        "NESTED_OUTPUT":"0",
+        "LINIT_COND":"0",
+        "SURF_ONLY":"0",
+        "CBLFLAG":"0"
+
+    },
+    "Release_params" :{ 
+     "PARTS": "200000",
+        "Z1":"10",
+        "Z2": "100",
+        "ZKIND": "1",
+        "MASS" : "1.0000E8",
+        "COMMENT" : "FINE-SILT"
+    
+    },
+
+    "Receptor_locations" :{
+        "Loc1" : {"lon": "10.137", "lat" : "35.964", "comment": "Location 1"},
+        "Loc2" : {"lon": "15.137", "lat" : "35.964", "comment": "Location 2"}
+    }    
+    
+}
