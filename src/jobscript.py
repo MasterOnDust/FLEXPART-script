@@ -45,6 +45,7 @@ def write_pathnames(folderName, paths):
 
 def write_sbatch_file_per_site(jobscript_params,date, location,folderName,paths):
     date0 = date.strftime("%Y%m%d")
+    modules = jobscript_params.get('modules', ['ecCodes/2.9.2-intel-2018b', 'netCDF-Fortran/4.4.4-intel-2018b'])
     filter_keys = ['account', 'time', 'ntasks', 'mem-per-cpu', 'mail-user']
     jobscript_params = {param: jobscript_params[param] for param in filter_keys}
     job_file = folderName + '/job_{}_{}.sh'.format(location, date0)
@@ -59,9 +60,8 @@ def write_sbatch_file_per_site(jobscript_params,date, location,folderName,paths)
         fh.writelines('set -o errexit\n')
         fh.writelines('set -o nounset\n')
         fh.writelines('module --quiet purge\n')
-
-        fh.writelines('module load ecCodes/2.9.2-intel-2018b\n')
-        fh.writelines('module load netCDF-Fortran/4.4.4-intel-2018b\n')
+        for module in modules:
+            fh.writelines('module load {}\n'.format(module))
         fh.writelines('export PATH={}:$PATH\n'.format(paths["flexpart_src"]))
         fh.writelines('cd {}\n'.format(folderName))
         fh.writelines("time FLEXPART\n")
@@ -245,10 +245,13 @@ def setup_flexpart_per_site(settings, freq='M'):
     e = pd.to_datetime(simulation_params["end_date"]+' '+simulation_params["end_time"])
     date_range = pd.date_range(start=s,
                            end=e, freq=freq)
+
     date_list = date_range.to_list()
     date_list.insert(0,s)
-    date_list[-1] = e
-
+    if len(date_list)==1:
+        date_list.append(e)
+    else:
+        date_list[-1] = e
     with open(paths["abs_path"] + "/COMPLETED_RUNS", "w") as cr:
         cr.writelines("Path,            STATUS \n")
 
@@ -420,10 +423,10 @@ def createParentDir(paths):
 if __name__=="__main__":
 
     parser = ap.ArgumentParser(description='''
-            Python script for setting up flexpart backward simulations 
-            based on model settings specified in a json file. Can either 
-            setup the simulations in a per time step config or per location 
-            config.  
+            Python script for setting up flexpart backward simulations
+            based on model settings specified in a json file. Can either
+            setup the simulations in a per time step config or per location
+            config.
     ''')
     parser.add_argument('path', help='Path json to file containting simulation settings')
     parser.add_argument('--absPath', '--ap', help='Absolute path to topdirectory where flexpart simulation will be created', default=None)
