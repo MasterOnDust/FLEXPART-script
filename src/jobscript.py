@@ -18,6 +18,21 @@ import collections.abc
 from IPython import embed
 
 def write_to_file(params_dict,path, identifier):
+    """
+    DESCRIPTION
+    ===========
+        Write dictionary to namelist file
+
+    USEAGE:
+    =======
+        write_to_file(params_dict, path, identifier)
+        
+        params:
+            params_dict: dictionary containing simulations settings for the specific file.
+            path: relative path to where file should be placed
+            identifier: used to identify the tag of the namelist
+    """
+
     with open(path, 'w') as outfile:
         outfile.writelines('&{}\n'.format(identifier))
         for option, setting in params_dict.items():
@@ -95,7 +110,7 @@ def write_sbatch_file_release_time_step_array(jobscript_params,date, paths, batc
         fh.writelines('export PATH={}:$PATH\n'.format(paths["flexpart_src"]))
         fh.writelines('for ((i=1;i<={};i++))\n'.format(n_simulations_per_task))
         fh.writelines('do\n')
-        fh.writelines('     let \"linenumber=((${SLURM_ARRAY_TASK_ID}-1)*{}+i)\"\n'.format(simulations_per_task))
+        fh.writelines('     let \"linenumber=((${SLURM_ARRAY_TASK_ID}-1)*{}+i)\"\n'.format(n_simulations_per_task))
         fh.writelines('     INPATH=$(sed -n \"${linenumber}p\"' + ' {}/paths{}.txt)\n'.format(paths['abs_path'],batch_number))
         fh.writelines('     if [ "$INPATH" == \"==\" ]; then\n')
         fh.writelines('          echo \"End of file reached\"\n')
@@ -278,7 +293,7 @@ def setup_flexpart_per_site(settings, freq='M'):
             #(jobscript_params,date, location,folder_name,paths)
             write_sbatch_file_per_site(job_params, date_list[i], site, folderName, paths)
 
-def setup_single_flexpart_simulation(settings):
+def setup_single_flexpart_simulation(settings, continuous_release=False):
 
     paths = settings['Paths']
     simulation_params = settings['Simulation_params']
@@ -292,11 +307,17 @@ def setup_single_flexpart_simulation(settings):
     release_duration = pd.to_timedelta(simulation_params["release_intervall"])
     s = pd.to_datetime(simulation_params['start_date']+' '+simulation_params["start_time"])
     e = pd.to_datetime(simulation_params["end_date"]+' '+simulation_params["end_time"])
-
-    command['IBDATE'] = (s+sim_lenght).strftime('%Y%m%d')
-    command['IBTIME'] =  (s+sim_lenght).strftime('%H%M%S')
-    command['IEDATE'] = s.strftime('%Y%m%d')
-    command['IETIME'] = s.strftime('%H%M%S')
+    if continuous_release:
+        s = s - pd.to_timedelta(simulation_params['Ageclass_params']['LAGE'],unit='S')
+        command['IBDATE'] = s.strftime('%Y%m%d')
+        command['IBTIME'] = s.strftime('%H%M%S')
+        command['IEDATE'] = e.strftime('%Y%m%d')
+        command['IETIME'] = e.strftime('%H%M%S')
+    else:
+        command['IBDATE'] = (s+sim_lenght).strftime('%Y%m%d')
+        command['IBTIME'] =  (s+sim_lenght).strftime('%H%M%S')
+        command['IEDATE'] = s.strftime('%Y%m%d')
+        command['IETIME'] = s.strftime('%H%M%S')
     try:
         os.mkdir(paths["abs_path"])
     except FileExistsError:
@@ -308,12 +329,12 @@ def setup_single_flexpart_simulation(settings):
     os.mkdir(folderName + '/options')
     os.mkdir(folderName + '/output')
     os.mkdir(folderName +'/options/SPECIES')
-    if command.get('LAGESPECTRA') == 1:
+    if command.get('LAGESPECTRA') == '1':
         nage_class_params = settings.get('Ageclass_params',None)
         if nage_class_params == None:
             raise ValueError('Ageclass_params not defined in json file')
         else:
-            write_to_file(nage_class_params, '/options/AGECLASSES')
+            write_to_file(nage_class_params, folderName+'/options/AGECLASSES', 'AGECLASS')
     write_to_file(command,folderName + '/options/COMMAND', 'COMMAND')
     write_to_file(outgrid, folderName + '/options/OUTGRID', 'OUTGRID')
     write_to_file(species_params, folderName + '/options/SPECIES/SPECIES_001','SPECIES_PARAMS')
