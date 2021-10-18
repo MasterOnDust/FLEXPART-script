@@ -288,7 +288,6 @@ def setup_single_flexpart_simulation(settings):
     site_dict = settings['Receptor_locations']
     release_dict = settings['Release_params']
     job_params = settings["Job_params"]
-
     sim_lenght = pd.to_timedelta(simulation_params["lenght_of_simulation"])
     release_duration = pd.to_timedelta(simulation_params["release_intervall"])
     s = pd.to_datetime(simulation_params['start_date']+' '+simulation_params["start_time"])
@@ -298,7 +297,6 @@ def setup_single_flexpart_simulation(settings):
     command['IBTIME'] =  (s+sim_lenght).strftime('%H%M%S')
     command['IEDATE'] = s.strftime('%Y%m%d')
     command['IETIME'] = s.strftime('%H%M%S')
-    command['LAGESPECTRA'] = '0'
     try:
         os.mkdir(paths["abs_path"])
     except FileExistsError:
@@ -310,6 +308,12 @@ def setup_single_flexpart_simulation(settings):
     os.mkdir(folderName + '/options')
     os.mkdir(folderName + '/output')
     os.mkdir(folderName +'/options/SPECIES')
+    if command.get('LAGESPECTRA') == 1:
+        nage_class_params = settings.get('Ageclass_params',None)
+        if nage_class_params == None:
+            raise ValueError('Ageclass_params not defined in json file')
+        else:
+            write_to_file(nage_class_params, '/options/AGECLASSES')
     write_to_file(command,folderName + '/options/COMMAND', 'COMMAND')
     write_to_file(outgrid, folderName + '/options/OUTGRID', 'OUTGRID')
     write_to_file(species_params, folderName + '/options/SPECIES/SPECIES_001','SPECIES_PARAMS')

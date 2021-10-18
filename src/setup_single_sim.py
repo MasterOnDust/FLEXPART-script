@@ -5,7 +5,7 @@ Setup single FLEXPAT simulation
 """
 
 
-from .jobscript import setup_single_flexpart_simulation
+from jobscript import setup_single_flexpart_simulation
 import argparse as ap
 import os
 import pandas as pd
@@ -25,7 +25,7 @@ if __name__=="__main__":
     parser.add_argument('--lenght_of_trajectory', '--lof',default='5d')
     parser.add_argument('--absPath', '--ap',
                         help='Absolute path to topdirectory where flexpart simulation will be created', default='./')
-
+    parser.add_argument('--continuous_release', '--cr', action='store_true')
     args = parser.parse_args()
     path = args.path
     abs_path = args.absPath
@@ -34,11 +34,16 @@ if __name__=="__main__":
     e_time=args.time
     lenght_of_trajectory = args.lenght_of_trajectory
     rel_int = args.release_intervall
+    continuous_release = args.continuous_release
+
+
     with open(path) as config_file:
         settings = json.load(config_file)
     e_date = pd.to_datetime(e_date+' '+e_time)
     rel_int = pd.to_timedelta(rel_int)
     b_date = e_date - rel_int
+
+
 
     settings['Simulation_params'].update({'start_date': e_date.strftime('%Y-%m-%d')})
     settings['Simulation_params'].update({'end_date': e_date.strftime('%Y-%m-%d')})
@@ -48,4 +53,7 @@ if __name__=="__main__":
         settings['Paths'].update({'path_to_forcing': path_to_forcing})
     if abs_path:
         settings['Paths'].update({'abs_path':abs_path})
+    if continuous_relese:
+        t0 = pd.to_datetime('')
+
     setup_single_flexpart_simulation(settings)
