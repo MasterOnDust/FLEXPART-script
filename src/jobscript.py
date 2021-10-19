@@ -114,7 +114,7 @@ def write_sbatch_file_release_time_step_array(jobscript_params,date, paths, batc
         fh.writelines('exit 0' )
 
 
-def write_sbatch_file_release_time_step(jobscript_params,date, paths):
+def write_sbatch_file_release_time_step(jobscript_params,date0, paths):
     job_file = paths['abs_path'] + '/submit_flexpart{}.sh'.format(date0)
     with open(job_file, 'w') as fh:
         fh.writelines("#!/bin/bash\n")
@@ -317,7 +317,7 @@ def setup_single_flexpart_simulation(settings, continuous_release=False):
         os.chdir(paths["abs_path"])
 
 
-    folderName = paths["abs_path"] + '/' + s.strftime("%Y%m%d_%H")
+    folderName = os.path.join(paths["abs_path"], s.strftime("%Y%m%d_%H"))
     
     try:
         os.mkdir(folderName)
@@ -348,11 +348,12 @@ def setup_single_flexpart_simulation(settings, continuous_release=False):
 
     date0=s.strftime('%Y%m%d_%H')
     job_file = folderName + '/submit_flexpart{}.sh'.format(date0)
+    modules = job_params.get('modules', ['ecCodes/2.9.2-intel-2018b', 'netCDF-Fortran/4.4.4-intel-2018b'])
     with open(job_file, 'w') as fh:
         fh.writelines("#!/bin/bash\n")
         fh.writelines("#SBATCH --job-name=FLEXPART_{}\n".format(date0))
-        fh.writelines("#SBATCH --error={}/{}.err\n".format(folderName,date0))
-        fh.writelines("#SBATCH --output={}/{}.out\n".format(folderName,date0))
+        fh.writelines("#SBATCH --error={}/{}.err\n".format(folderName, date0))
+        fh.writelines("#SBATCH --output={}/{}.out\n".format(folderName, date0))
         fh.writelines("#SBATCH --mail-type=FAIL\n")
         fh.writelines("#SBATCH --time={}\n".format(job_params['time']))
         fh.writelines("#SBATCH --mem-per-cpu={}\n".format(job_params['mem-per-cpu']))
@@ -362,8 +363,8 @@ def setup_single_flexpart_simulation(settings, continuous_release=False):
         fh.writelines('set -o errexit\n')
         fh.writelines('set -o nounset\n')
         fh.writelines('module --quiet purge\n')
-        fh.writelines('module load ecCodes/2.9.2-intel-2018b\n')
-        fh.writelines('module load netCDF-Fortran/4.4.4-intel-2018b\n')
+        for module in modules:
+            fh.writelines('module load {}\n'.format(module))
         fh.writelines('export PATH={}:$PATH\n'.format(paths["flexpart_src"]))
 
         fh.writelines('cd {}\n'.format(folderName))
