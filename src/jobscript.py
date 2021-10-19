@@ -12,25 +12,30 @@ import shutil
 import sys
 
 from pandas.core.indexes.datetimes import date_range
-import f90nml
 import json
 import collections.abc
-from IPython import embed
 
 def write_to_file(params_dict,path, identifier):
+    """
+    DESCRIPTION
+    ===========
+        Write dictionary to namelist file
+
+    USEAGE:
+    =======
+        write_to_file(params_dict, path, identifier)
+        
+        params:
+            params_dict: dictionary containing simulations settings for the specific file.
+            path: relative path to where file should be placed
+            identifier: used to identify the tag of the namelist
+    """
+
     with open(path, 'w') as outfile:
         outfile.writelines('&{}\n'.format(identifier))
         for option, setting in params_dict.items():
             outfile.writelines(option + ' = ' + setting + ',\n')
         outfile.writelines('/')
-
-
-def write_namelist(params_dict,path):
-    nml = f90nml.Namelist(params_dict)
-    nml.end_comma = True
-    nml.uppercase = True
-    nml.indent = ''
-    nml.write(path, force=True)
 
 def write_pathnames(folderName, paths):
     """ Write pathnames file """
@@ -95,7 +100,7 @@ def write_sbatch_file_release_time_step_array(jobscript_params,date, paths, batc
         fh.writelines('export PATH={}:$PATH\n'.format(paths["flexpart_src"]))
         fh.writelines('for ((i=1;i<={};i++))\n'.format(n_simulations_per_task))
         fh.writelines('do\n')
-        fh.writelines('     let \"linenumber=((${SLURM_ARRAY_TASK_ID}-1)*{}+i)\"\n'.format(simulations_per_task))
+        fh.writelines('     let \"linenumber=((${SLURM_ARRAY_TASK_ID}-1)*{}+i)\"\n'.format(n_simulations_per_task))
         fh.writelines('     INPATH=$(sed -n \"${linenumber}p\"' + ' {}/paths{}.txt)\n'.format(paths['abs_path'],batch_number))
         fh.writelines('     if [ "$INPATH" == \"==\" ]; then\n')
         fh.writelines('          echo \"End of file reached\"\n')
@@ -109,7 +114,7 @@ def write_sbatch_file_release_time_step_array(jobscript_params,date, paths, batc
         fh.writelines('exit 0' )
 
 
-def write_sbatch_file_release_time_step(jobscript_params,date, paths):
+def write_sbatch_file_release_time_step(jobscript_params,date0, paths):
     job_file = paths['abs_path'] + '/submit_flexpart{}.sh'.format(date0)
     with open(job_file, 'w') as fh:
         fh.writelines("#!/bin/bash\n")
@@ -278,7 +283,7 @@ def setup_flexpart_per_site(settings, freq='M'):
             #(jobscript_params,date, location,folder_name,paths)
             write_sbatch_file_per_site(job_params, date_list[i], site, folderName, paths)
 
-def setup_single_flexpart_simulation(settings):
+def setup_single_flexpart_simulation(settings, continuous_release=False):
 
     paths = settings['Paths']
     simulation_params = settings['Simulation_params']
@@ -288,42 +293,67 @@ def setup_single_flexpart_simulation(settings):
     site_dict = settings['Receptor_locations']
     release_dict = settings['Release_params']
     job_params = settings["Job_params"]
-
     sim_lenght = pd.to_timedelta(simulation_params["lenght_of_simulation"])
     release_duration = pd.to_timedelta(simulation_params["release_intervall"])
     s = pd.to_datetime(simulation_params['start_date']+' '+simulation_params["start_time"])
     e = pd.to_datetime(simulation_params["end_date"]+' '+simulation_params["end_time"])
 
-    command['IBDATE'] = (s+sim_lenght).strftime('%Y%m%d')
-    command['IBTIME'] =  (s+sim_lenght).strftime('%H%M%S')
-    command['IEDATE'] = s.strftime('%Y%m%d')
-    command['IETIME'] = s.strftime('%H%M%S')
-    command['LAGESPECTRA'] = '0'
+    if continuous_release:
+        s_date = s - pd.to_timedelta(int(settings['Ageclass_params']['LAGE']),unit='S')
+        release_duration = s-e
+        command['IBDATE'] = s_date.strftime('%Y%m%d')
+        command['IBTIME'] = s_date.strftime('%H%M%S')
+        command['IEDATE'] = e.strftime('%Y%m%d')
+        command['IETIME'] = e.strftime('%H%M%S')
+    else:
+        command['IBDATE'] = (s+sim_lenght).strftime('%Y%m%d')
+        command['IBTIME'] =  (s+sim_lenght).strftime('%H%M%S')
+        command['IEDATE'] = s.strftime('%Y%m%d')
+        command['IETIME'] = s.strftime('%H%M%S')
+        s_date=s
     try:
         os.mkdir(paths["abs_path"])
     except FileExistsError:
         os.chdir(paths["abs_path"])
 
 
-    folderName = paths["abs_path"] + '/' + s.strftime("%Y%m%d_%H")
-    os.mkdir(folderName)
+    folderName = os.path.join(paths["abs_path"], s.strftime("%Y%m%d_%H"))
+    
+    try:
+        os.mkdir(folderName)
+    except FileExistsError:
+        askConfirmation = input("""This folder already exists,
+        do you want to delete it? (y/n)""")
+        if askConfirmation.strip() == 'y':
+            shutil.rmtree(folderName)
+            os.mkdir(folderName)
+        else:
+            sys.exit()
+    
     os.mkdir(folderName + '/options')
     os.mkdir(folderName + '/output')
     os.mkdir(folderName +'/options/SPECIES')
+    if command.get('LAGESPECTRA') == '1':
+        nage_class_params = settings.get('Ageclass_params',None)
+        if nage_class_params == None:
+            raise ValueError('Ageclass_params not defined in json file')
+        else:
+            write_to_file(nage_class_params, folderName+'/options/AGECLASSES', 'AGECLASS')
     write_to_file(command,folderName + '/options/COMMAND', 'COMMAND')
     write_to_file(outgrid, folderName + '/options/OUTGRID', 'OUTGRID')
     write_to_file(species_params, folderName + '/options/SPECIES/SPECIES_001','SPECIES_PARAMS')
     write_pathnames(folderName,paths)
     write_release_file_time_step(folderName + '/options/RELEASES', site_dict,
-                                release_dict,s, release_duration)
+                                release_dict,e, release_duration)
 
     date0=s.strftime('%Y%m%d_%H')
     job_file = folderName + '/submit_flexpart{}.sh'.format(date0)
+    modules = job_params.get('modules', ['ecCodes/2.9.2-intel-2018b', 'netCDF-Fortran/4.4.4-intel-2018b'])
     with open(job_file, 'w') as fh:
         fh.writelines("#!/bin/bash\n")
         fh.writelines("#SBATCH --job-name=FLEXPART_{}\n".format(date0))
-        fh.writelines("#SBATCH --error={}/{}.err\n".format(folderName,date0))
-        fh.writelines("#SBATCH --output={}/{}.out\n".format(folderName,date0))
+        fh.writelines("#SBATCH --error={}/{}.err\n".format(folderName, date0))
+        fh.writelines("#SBATCH --output={}/{}.out\n".format(folderName, date0))
         fh.writelines("#SBATCH --mail-type=FAIL\n")
         fh.writelines("#SBATCH --time={}\n".format(job_params['time']))
         fh.writelines("#SBATCH --mem-per-cpu={}\n".format(job_params['mem-per-cpu']))
@@ -333,8 +363,8 @@ def setup_single_flexpart_simulation(settings):
         fh.writelines('set -o errexit\n')
         fh.writelines('set -o nounset\n')
         fh.writelines('module --quiet purge\n')
-        fh.writelines('module load ecCodes/2.9.2-intel-2018b\n')
-        fh.writelines('module load netCDF-Fortran/4.4.4-intel-2018b\n')
+        for module in modules:
+            fh.writelines('module load {}\n'.format(module))
         fh.writelines('export PATH={}:$PATH\n'.format(paths["flexpart_src"]))
 
         fh.writelines('cd {}\n'.format(folderName))
