@@ -20,7 +20,7 @@ if __name__=="__main__":
                         help='last of simlation date  fmt YYYY-MM-DD')
     parser.add_argument('time',help='end time of last simulation fmt HH:MM:SS')
     parser.add_argument('--release_interval','--ri',default='3h', 
-                    help='Specify release interval not used in continuos release simulations')
+                    help='Specify release interval, in continuos release setup this should be set equal to LOUTSTEP')
     parser.add_argument('--path_to_forcing', '--pf', default=None,help='path to model forcing')
     parser.add_argument('--length_of_trajectory', '--lot',default=None, 
                 help='In single release simulations it determines the length of the simulation, For continuous simulations it determines the maximum age of the particles')
@@ -28,8 +28,11 @@ if __name__=="__main__":
                         help='Absolute path to topdirectory where flexpart simulation will be created', default='./')
     parser.add_argument('--continuous_release', '--cr', action='store_true')
     parser.add_argument('--bdate', '--bd', help='Starting date of continuos release simulation fmt YYYY-MM-DD HH:MM:SS (not used except in continuos release setup)', default=None)
+    
     parser.add_argument('--z1', help='lower bound release height', default=None)
     parser.add_argument('--z2', help='upper bound release height')
+    parser.add_argument('--npart_rel', '--npr', help='Number of particles to release per lout_step (only used in continuos release setup)', 
+                        default=2000)
     args = parser.parse_args()
     path = args.path
     abs_path = args.absPath
@@ -39,7 +42,8 @@ if __name__=="__main__":
     length_of_trajectory = args.length_of_trajectory
     rel_int = args.release_interval
     continuous_release = args.continuous_release
-    b_date = args.bdate 
+    b_date = args.bdate
+    npart_rel = args.npart_rel 
     z1 = args.z1
     z2 = args.z2
     with open(path) as config_file:
@@ -84,6 +88,12 @@ if __name__=="__main__":
     if abs_path:
         settings['Paths'].update({'abs_path':abs_path})
     if continuous_release:
+        npart_rel = int(npart_rel)
+        
+        nparts = round(((e_date - s_time).days * 2000 * 24)/(int(rel_int.seconds/(60*60))))
+
+        settings['Release_params'].update({'PARTS':str(nparts)})        
+
         if length_of_trajectory:
             try:
                 dt = pd.to_timedelta(length_of_trajectory)
