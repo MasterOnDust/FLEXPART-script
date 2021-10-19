@@ -12,10 +12,8 @@ import shutil
 import sys
 
 from pandas.core.indexes.datetimes import date_range
-import f90nml
 import json
 import collections.abc
-from IPython import embed
 
 def write_to_file(params_dict,path, identifier):
     """
@@ -38,14 +36,6 @@ def write_to_file(params_dict,path, identifier):
         for option, setting in params_dict.items():
             outfile.writelines(option + ' = ' + setting + ',\n')
         outfile.writelines('/')
-
-
-def write_namelist(params_dict,path):
-    nml = f90nml.Namelist(params_dict)
-    nml.end_comma = True
-    nml.uppercase = True
-    nml.indent = ''
-    nml.write(path, force=True)
 
 def write_pathnames(folderName, paths):
     """ Write pathnames file """
@@ -307,10 +297,12 @@ def setup_single_flexpart_simulation(settings, continuous_release=False):
     release_duration = pd.to_timedelta(simulation_params["release_intervall"])
     s = pd.to_datetime(simulation_params['start_date']+' '+simulation_params["start_time"])
     e = pd.to_datetime(simulation_params["end_date"]+' '+simulation_params["end_time"])
+
     if continuous_release:
-        s = s - pd.to_timedelta(simulation_params['Ageclass_params']['LAGE'],unit='S')
-        command['IBDATE'] = s.strftime('%Y%m%d')
-        command['IBTIME'] = s.strftime('%H%M%S')
+        s_date = s - pd.to_timedelta(int(settings['Ageclass_params']['LAGE']),unit='S')
+        release_duration = s-e
+        command['IBDATE'] = s_date.strftime('%Y%m%d')
+        command['IBTIME'] = s_date.strftime('%H%M%S')
         command['IEDATE'] = e.strftime('%Y%m%d')
         command['IETIME'] = e.strftime('%H%M%S')
     else:
@@ -318,6 +310,7 @@ def setup_single_flexpart_simulation(settings, continuous_release=False):
         command['IBTIME'] =  (s+sim_lenght).strftime('%H%M%S')
         command['IEDATE'] = s.strftime('%Y%m%d')
         command['IETIME'] = s.strftime('%H%M%S')
+        s_date=s
     try:
         os.mkdir(paths["abs_path"])
     except FileExistsError:
@@ -325,7 +318,18 @@ def setup_single_flexpart_simulation(settings, continuous_release=False):
 
 
     folderName = paths["abs_path"] + '/' + s.strftime("%Y%m%d_%H")
-    os.mkdir(folderName)
+    
+    try:
+        os.mkdir(folderName)
+    except FileExistsError:
+        askConfirmation = input("""This folder already exists,
+        do you want to delete it? (y/n)""")
+        if askConfirmation.strip() == 'y':
+            shutil.rmtree(folderName)
+            os.mkdir(folderName)
+        else:
+            sys.exit()
+    
     os.mkdir(folderName + '/options')
     os.mkdir(folderName + '/output')
     os.mkdir(folderName +'/options/SPECIES')
@@ -340,7 +344,7 @@ def setup_single_flexpart_simulation(settings, continuous_release=False):
     write_to_file(species_params, folderName + '/options/SPECIES/SPECIES_001','SPECIES_PARAMS')
     write_pathnames(folderName,paths)
     write_release_file_time_step(folderName + '/options/RELEASES', site_dict,
-                                release_dict,s, release_duration)
+                                release_dict,e, release_duration)
 
     date0=s.strftime('%Y%m%d_%H')
     job_file = folderName + '/submit_flexpart{}.sh'.format(date0)

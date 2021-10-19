@@ -28,6 +28,8 @@ if __name__=="__main__":
                         help='Absolute path to topdirectory where flexpart simulation will be created', default='./')
     parser.add_argument('--continuous_release', '--cr', action='store_true')
     parser.add_argument('--bdate', '--bd', help='Starting date of continuos release simulation fmt YYYY-MM-DD HH:MM:SS (not used except in continuos release setup)', default=None)
+    parser.add_argument('--z1', help='lower bound release height', default=None)
+    parser.add_argument('--z2', help='upper bound release height')
     args = parser.parse_args()
     path = args.path
     abs_path = args.absPath
@@ -37,8 +39,9 @@ if __name__=="__main__":
     length_of_trajectory = args.length_of_trajectory
     rel_int = args.release_interval
     continuous_release = args.continuous_release
-    b_date = args.bdate
-
+    b_date = args.bdate 
+    z1 = args.z1
+    z2 = args.z2
     with open(path) as config_file:
         settings = json.load(config_file)
     e_date = pd.to_datetime(e_date+' '+e_time)
@@ -58,16 +61,24 @@ if __name__=="__main__":
             s_time = pd.to_datetime(f'{start_date} {start_time}')
             if s_time > e_date:
                 raise ValueError('btime has to be less than etime, please update the .json file or explicitly specify --btime')
-    b_date = e_date - rel_int
-
-
-
-    settings['Simulation_params'].update({'start_date': e_date.strftime('%Y-%m-%d')})
-    settings['Simulation_params'].update({'end_date': e_date.strftime('%Y-%m-%d')})
-    settings['Simulation_params'].update({'start_time': e_date.strftime('%H:%M:%S')})
-    settings['Simulation_params'].update({'end_time': e_date.strftime('%H:%M:%S')})
-
-
+        settings['Simulation_params'].update({'start_date': s_time.strftime('%Y-%m-%d')})
+        settings['Simulation_params'].update({'end_date': e_date.strftime('%Y-%m-%d')})
+        settings['Simulation_params'].update({'start_time': s_time.strftime('%H:%M:%S')})
+        settings['Simulation_params'].update({'end_time': e_date.strftime('%H:%M:%S')})
+    else:
+        b_date = e_date - rel_int
+        settings['Simulation_params'].update({'start_date': e_date.strftime('%Y-%m-%d')})
+        settings['Simulation_params'].update({'end_date': e_date.strftime('%Y-%m-%d')})
+        settings['Simulation_params'].update({'start_time': e_date.strftime('%H:%M:%S')})
+        settings['Simulation_params'].update({'end_time': e_date.strftime('%H:%M:%S')})
+    if z2:
+        settings['Release_params'].update({'Z2':str(z2)})
+    
+    if z1:
+        z2 = settings['Release_params']['Z2']
+        if int(z2) < int(z1):
+            raise ValueError('z1 cannot be smaller than z0')
+        settings['Release_params'].update({'Z1':str(z1)})
     if path_to_forcing:
         settings['Paths'].update({'path_to_forcing': path_to_forcing})
     if abs_path:
@@ -80,9 +91,8 @@ if __name__=="__main__":
                 print(f'Invalid time delta provided {length_of_trajectory}')
              
             settings['Ageclass_params'].update({'LAGE':'{}'.format(int(dt.total_seconds()))})
-            print(settings['Ageclass_params'])
         t0 = pd.to_datetime('')
     else:
         settings['Command_Params'].update({'LAGESPECTRA':'0'})
 
-    setup_single_flexpart_simulation(settings)
+    setup_single_flexpart_simulation(settings, continuous_release)
