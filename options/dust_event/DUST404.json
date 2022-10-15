@@ -1,0 +1,138 @@
+{
+  "Simulation_params": {
+    "start_date": "2006-03-06",
+    "start_time": "00:00:00",
+    "end_date": "2015-05-31",
+    "end_time": "00:00:00",
+    "time_step": "3600s",
+    "lenght_of_simulation": "-10d",
+    "release_intervall": "-3600s"
+  },
+  "Job_params": {
+    "account": "nn2806k",
+    "time": "08:00:00",
+    "ntasks": "1",
+    "mem-per-cpu": "8G",
+    "mail-user": "ovewh@student.geo.uio.no",
+    "modules": [
+      "ecCodes/2.18.0-iimpi-2019b",
+      "netCDF-Fortran/4.5.2-iimpi-2019b"
+    ]
+  },
+  "Paths": {
+    "abs_path": "/cluster/work/users/ovewh/Test2",
+    "path_to_forcing": "/cluster/projects/nn2806k/ovewh/AVAILABLE_WINDFIELDS_EA",
+    "flexpart_input_path": "/cluster/projects/nn2806k/ovewh/flexpart/FLEXPART_input/",
+    "flexpart_src": "/cluster/projects/nn2806k/ovewh/flexpart/flexpart/src"
+  },
+  "Species_Params": {
+    "PSPECIES": "DUST404",
+    "PDECAY": "-9.9",
+    "PWETA_GAS": "-9.0000002E-10",
+    "PWETB_GAS": "-9.900000",
+    "PCRAIN_AERO": "1.000000",
+    "PCSNOW_AERO": "1.000000",
+    "PCCN_AERO": "0.9000000",
+    "PIN_AERO": "0.0200000",
+    "PRELDIFF": "-9.900000",
+    "PHENRY": "-9.0000002E-10",
+    "PF0": "-9.000000",
+    "PDENSITY": "2500.000",
+    "PDQUER": "1.34E-06",
+    "PDSIGMA": "1.30E+00",
+    "PDRYVEL": "-9.990",
+    "PWEIGHTMOLAR": "-9.900000",
+    "POHCCONST": "-9.0000002E-10",
+    "POHDCONST": "-9.9",
+    "POHNCONST": "2.0"
+  },
+  "Outgrid_params": {
+    "OUTLON0": "50.00000",
+    "OUTLAT0": "25.00000",
+    "NUMXGRID": "780",
+    "NUMYGRID": "400",
+    "DXOUT": "0.1000000",
+    "DYOUT": "0.1000000",
+    "OUTHEIGHTS": "100.0000"
+  },
+  "Command_Params": {
+    "LDIRECT": "-1",
+    "IBDATE": "20190309",
+    "IBTIME": "060000",
+    "IEDATE": "20190310",
+    "IETIME": "120000",
+    "LOUTSTEP": "3600",
+    "LOUTAVER": "3600",
+    "LOUTSAMPLE": "900",
+    "ITSPLIT": "99999999",
+    "LSYNCTIME": "900",
+    "CTL": "-5.0000000",
+    "IFINE": "4",
+    "IOUT": "13",
+    "IPOUT": "0",
+    "LSUBGRID": "1",
+    "LCONVECTION": "1",
+    "LAGESPECTRA": "1",
+    "IPIN": "0",
+    "IOUTPUTFOREACHRELEASE": "1",
+    "IFLUX": "0",
+    "MDOMAINFILL": "0",
+    "IND_SOURCE": "1",
+    "IND_RECEPTOR": "3",
+    "MQUASILAG": "0",
+    "NESTED_OUTPUT": "0",
+    "LINIT_COND": "0",
+    "SURF_ONLY": "0",
+    "CBLFLAG": "0"
+  },
+  "Release_params": {
+    "PARTS": "12500",
+    "Z1": "10",
+    "Z2": "100",
+    "ZKIND": "1",
+    "MASS": "1.0000E8",
+    "COMMENT": "DUST404"
+  },
+  "Receptor_locations": {
+    "1010A": {
+      "lon": "116.2296",
+      "lat": "40.217",
+      "comment": "1010A"
+    },
+    "1081A": {
+      "lon": "112.5139",
+      "lat": "37.8873",
+      "comment": "1081A"
+    },
+    "1096A": {
+      "lon": "111.5512",
+      "lat": "40.7866",
+      "comment": "1096A"
+    },
+    "1466A": {
+      "lon": "108.954",
+      "lat": "34.2713",
+      "comment": "1466A"
+    },
+    "SACOL": {
+      "lon": "104.1373",
+      "lat": "35.9454",
+      "comment": "SACOL"
+    },
+    "1484A": {
+      "lon": "105.9512",
+      "lat": "38.6016",
+      "comment": "1484A"
+    },
+    "1926A": {
+      "lon": "109.4131",
+      "lat": "36.6275",
+      "comment": "1926A"
+    },
+    "1962A": {
+      "lon": "117.541",
+      "lat": "36.71",
+      "comment": "1962A"
+    }
+  }
+}
