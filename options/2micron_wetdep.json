@@ -16,7 +16,11 @@
         "time": "12:00:00",
         "ntasks":"1",
         "mem-per-cpu":"16G",
-        "mail-user":"ovewh@student.geo.uio.no"
+        "mail-user":"ovewh@student.geo.uio.no",
+        "modules": [
+            "ecCodes/2.18.0-iimpi-2019b",
+            "netCDF-Fortran/4.5.2-iimpi-2019b"
+          ]
     },
     
     "Paths" : {
