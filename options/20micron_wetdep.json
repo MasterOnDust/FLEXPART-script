@@ -111,7 +111,7 @@
 
     "Receptor_locations" :{
         "SACOL" : {"lon": "104.137", "lat" : "35.964", "comment": "SACOL"},
-        "BADOE":{"lon":"111.170", "lat" : "39.003", "comment":"BADOE"},
+        "BAODE":{"lon":"111.170", "lat" : "39.003", "comment":"BADOE"},
         "YINCHUAN" :{"lon":"106.101", "lat":"38.500", "comment":"YINCHUAN"},
         "LINGTAI" : {"lon":"107.789", "lat":"35.065", "comment":"LINGTAI"},
         "LUOCHUAN":{"lon":"109.424", "lat" : "35.710", "comment":"LUOCHUAN"},
