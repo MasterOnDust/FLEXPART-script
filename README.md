@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/282606392.svg)](https://zenodo.org/doi/10.5281/zenodo.11123229)
+
 # FLEXPART-script
 Python script for setting up many backward FLEXPART simulations. 
 
