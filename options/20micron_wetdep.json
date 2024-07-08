@@ -39,7 +39,7 @@
         "PWETB_GAS" : "-9.900000"    ,
         "PCRAIN_AERO" :  "1.000000" ,
         "PCSNOW_AERO" : "1.000000"    ,
-        "PCCN_AERO"   : "0.9000000"    ,
+        "PCCN_AERO"   : "0.3000000"    ,
         "PIN_AERO"   : "0.1000000"    ,
         "PRELDIFF":  "-9.900000"    ,
         "PHENRY"  : "-9.0000002E-10",
